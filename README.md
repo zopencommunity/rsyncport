@@ -1,1 +1,5 @@
-# rsyncport
+# rsync
+
+rsync requires a 'modern' awk, Python3 with commonmark module, and autotools
+when building using 'git'.
+See: (https://github.com/WayneD/rsync/blob/master/INSTALL.md)

@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# Set up environment variables for general build tool to operate
+#
+if ! [ -f ./buildenv ]; then
+	echo "Need to source from the buildenv directory" >&2
+	return 0
+fi
+
+export ZOPEN_ROOT="${PWD}"
+export ZOPEN_TYPE="GIT"
+
+ZOPEN_TARBALL_DIR=v3.2.4
+export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
+export ZOPEN_TARBALL_DEPS="curl gzip make automake autoconf m4 perl"
+
+export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
+export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl"
+
+#
+# For GIT, it needs Python set up and also requires commonmark installed, e.g.
+# python3 -mpip install --user commonmark
+# For TARBALL, emporary hack - the tarball name does not match the directory - create a sym link to help zopen-build out
+#
+if [ "${ZOPEN_TYPE}" = "GIT" ]; then
+	if ! type python3 >/dev/null || ! ( pip3 freeze | grep -q commonmark ); then
+		echo "need python3 with commonmark package set up for build of rsync" >&2
+		return 4
+	fi
+	export PATH=${HOME}/.local/bin:$PATH
+else
+	rm "${ZOPEN_TARBALL_DIR}"
+	ln -s "rsync-3.2.4" "${ZOPEN_TARBALL_DIR}"
+fi
