@@ -19,7 +19,7 @@ export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
 # Waiting on 'install' to be available for xxhash, zstd, lz4. Add these back in when available
 export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl gawk"
 export ZOPEN_EXTRA_CONFIGURE_OPTS="--disable-openssl --disable-xxhash --disable-zstd --disable-lz4"
-export ZOPEN_EXTRA_CFLAGS='-I./zlib -I./popt -DHAVE_CONFIG_H' # these are not showing up - perhaps because i pass them into later steps?
+export ZOPEN_EXTRA_CFLAGS='-qnocsect -I./zlib -I./popt -DHAVE_CONFIG_H' # these are not showing up - perhaps because i pass them into later steps?
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
