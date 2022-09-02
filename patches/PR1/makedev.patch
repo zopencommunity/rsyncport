@@ -1,0 +1,18 @@
+diff --git a/rsync.h b/rsync.h
+index 1cc037c5..215b61b0 100644
+--- a/rsync.h
++++ b/rsync.h
+@@ -488,6 +488,13 @@ enum delret {
+ #include <sys/sysmacros.h>
+ #endif
+ 
++#ifdef __MVS__
++  /* z/OS has no 'makedev' so create trivial services */
++  #define makedev(devmajor,devminor) ((dev_t)((devmajor) << 24 | (devminor)))
++  #define minor(dev)                 ((dev) & 0xFFFFFF)
++  #define major(dev)                 (((uint32)(dev)) >> 24)
++#endif
++
+ #ifdef MAKEDEV_TAKES_3_ARGS
+ #define MAKEDEV(devmajor,devminor) makedev(0,devmajor,devminor)
+ #else

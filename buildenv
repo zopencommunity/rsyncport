@@ -15,7 +15,11 @@ export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZO
 export ZOPEN_TARBALL_DEPS="curl gzip make automake autoconf m4 perl"
 
 export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl gawk openssl xxhash zstd lz4"
+# export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl gawk openssl xxhash zstd lz4"
+# Waiting on 'install' to be available for xxhash, zstd, lz4. Add these back in when available
+export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl gawk"
+export ZOPEN_EXTRA_CONFIGURE_OPTS="--disable-openssl --disable-xxhash --disable-zstd --disable-lz4"
+export ZOPEN_EXTRA_CFLAGS='-qnocsect -I./zlib -I./popt -DHAVE_CONFIG_H' # these are not showing up - perhaps because i pass them into later steps?
 
 export ZOPEN_EXTRA_CPPFLAGS="-I${HOME}/zopen/prod/openssl/include -I${HOME}/zopen/prod/xxhash/include -I${HOME}/zopen/prod/zstd/include -I${HOME}/zopen/prod/lz4/include"
 export ZOPEN_EXTRA_LDFLAGS="-L$HOME/zopen/prod/openssl/lib -L$HOME/zopen/prod/xxhash/lib -L$HOME/zopen/prod/zstd/lib  -L$HOME/zopen/prod/lz4/lib  -lssl -lzstd -llz4"
@@ -26,6 +30,7 @@ export ZOPEN_EXTRA_LDFLAGS="-L$HOME/zopen/prod/openssl/lib -L$HOME/zopen/prod/xx
 # For TARBALL, emporary hack - the tarball name does not match the directory - create a sym link to help zopen-build out
 #
 if [ "${ZOPEN_TYPE}" = "GIT" ]; then
+  export ZOPEN_BOOTSTRAP=skip
 	if ! type python3 >/dev/null || ! ( pip3 freeze | grep -q commonmark ); then
 		echo "need python3 with commonmark package set up for build of rsync" >&2
 		return 4
