@@ -1,0 +1,19 @@
+diff --git a/popt/system.h b/popt/system.h
+index 25c22dae..14ecd593 100644
+--- a/popt/system.h
++++ b/popt/system.h
+@@ -122,10 +122,14 @@ xstrdup(const char *s)
+ #define	getenv(_s)	__secure_getenv(_s)
+ #endif
+ 
++#ifndef __MVS__
++  /* msf - not sure why this is getting pulled in but we should port popt anyway */
++
+ #if !defined HAVE_SNPRINTF || !defined HAVE_C99_VSNPRINTF
+ #define snprintf rsync_snprintf
+ int snprintf(char *str,size_t count,const char *fmt,...);
+ #endif
++#endif
+ 
+ #define UNUSED(x) x __attribute__((__unused__))
+ 

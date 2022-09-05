@@ -1,0 +1,13 @@
+diff --git a/popt/popt.c b/popt/popt.c
+index 5d927f78..0cdfcc64 100644
+--- a/popt/popt.c
++++ b/popt/popt.c
+@@ -8,6 +8,8 @@
+ 
+ #undef	MYDEBUG
+ 
++#include <stdlib.h>
++#include <float.h>
+ #include "system.h"
+ 
+ #if HAVE_FLOAT_H
