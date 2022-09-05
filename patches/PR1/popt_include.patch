@@ -1,5 +1,5 @@
 diff --git a/popt/popt.c b/popt/popt.c
-index 5d927f78..0cdfcc64 100644
+index 5d927f78..bd8920a7 100644
 --- a/popt/popt.c
 +++ b/popt/popt.c
 @@ -8,6 +8,8 @@
@@ -11,3 +11,19 @@ index 5d927f78..0cdfcc64 100644
  #include "system.h"
  
  #if HAVE_FLOAT_H
+@@ -27,6 +29,7 @@
+ int _popt_debug = 0;
+ #endif
+ 
++#ifndef __MVS__
+ #if !defined(HAVE_STRERROR) && !defined(__LCLINT__)
+ static char * strerror(int errno)
+ {
+@@ -39,6 +42,7 @@ static char * strerror(int errno)
+ 	return POPT_("unknown errno");
+ }
+ #endif
++#endif
+ 
+ #ifdef MYDEBUG
+ /*@unused@*/
