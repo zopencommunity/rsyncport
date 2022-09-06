@@ -1,8 +1,22 @@
 diff --git a/rsync.h b/rsync.h
-index e29c37c3..70fa6e44 100644
+index e29c37c3..b64effc4 100644
 --- a/rsync.h
 +++ b/rsync.h
-@@ -488,6 +488,13 @@ enum delret {
+@@ -449,6 +449,13 @@ enum delret {
+ #endif
+ #endif
+ 
++#ifdef HAVE_SYS_MODES_H
++/* apparently z/OS needs this for S_ISLNK */
++#ifndef S_ISLNK
++#include <sys/modes.h>
++#endif
++#endif
++
+ /* these are needed for the uid/gid mapping code */
+ #include <pwd.h>
+ #include <grp.h>
+@@ -488,6 +495,13 @@ enum delret {
  #include <sys/sysmacros.h>
  #endif
  
@@ -16,13 +30,25 @@ index e29c37c3..70fa6e44 100644
  #ifdef MAKEDEV_TAKES_3_ARGS
  #define MAKEDEV(devmajor,devminor) makedev(0,devmajor,devminor)
  #else
-@@ -1274,11 +1281,19 @@ extern int errno;
+@@ -807,7 +821,11 @@ struct file_struct {
+ 	const char *dirname;	/* The dir info inside the transfer */
+ 	time_t modtime;		/* When the item was last modified */
+ 	uint32 len32;		/* Lowest 32 bits of the file's length */
++#ifdef __MVS__
++	uint32 mode;		/* The item's type and permissions */
++#else
+ 	uint16 mode;		/* The item's type and permissions */
++#endif
+ 	uint16 flags;		/* The FLAG_* bits for this item */
+ #ifdef USE_FLEXIBLE_ARRAY
+ 	const char basename[];	/* The basename (AKA filename) follows */
+@@ -1274,11 +1292,19 @@ extern int errno;
  #define CHMOD_BITS (S_ISUID | S_ISGID | S_ISVTX | ACCESSPERMS)
  
  #ifndef _S_IFMT
 -#define _S_IFMT        0170000
 +  #ifdef S_IFMT
-+    #define _S_FMT S_IFMT
++    #define _S_IFMT S_IFMT
 +  #else
 +    #define _S_IFMT        0170000
 +  #endif
