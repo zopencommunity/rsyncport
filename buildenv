@@ -37,6 +37,7 @@ else
   RSYNC_INC="${ZOPEN_ROOT}/${ZOPEN_TARBALL_DIR}"
 fi
 
+export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto"
 export ZOPEN_EXTRA_CFLAGS="-qnocsect"
 export ZOPEN_EXTRA_CPPFLAGS="-I./zlib -I./popt -I${HOME}/zopen/prod/openssl/include -I${HOME}/zopen/prod/xxhash/include -I${HOME}/zopen/prod/zstd/include -I${HOME}/zopen/prod/lz4/include"
-export ZOPEN_EXTRA_LDFLAGS="-L$HOME/zopen/prod/openssl/lib -L$HOME/zopen/prod/xxhash/lib -L$HOME/zopen/prod/zstd/lib  -L$HOME/zopen/prod/lz4/lib -lxxhash -lssl -lzstd -llz4 -lcrypto"
+export ZOPEN_EXTRA_LDFLAGS="-L$HOME/zopen/prod/openssl/lib -L$HOME/zopen/prod/xxhash/lib -L$HOME/zopen/prod/zstd/lib  -L$HOME/zopen/prod/lz4/lib"
