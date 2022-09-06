@@ -37,6 +37,9 @@ else
   RSYNC_INC="${ZOPEN_ROOT}/${ZOPEN_TARBALL_DIR}"
 fi
 
+# 
+# Should be able to add zlib here and popt (once popt is ported)
+#
 export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto"
 export ZOPEN_EXTRA_CFLAGS="-qnocsect"
 export ZOPEN_EXTRA_CPPFLAGS="-I./zlib -I./popt -I${HOME}/zopen/prod/openssl/include -I${HOME}/zopen/prod/xxhash/include -I${HOME}/zopen/prod/zstd/include -I${HOME}/zopen/prod/lz4/include"
