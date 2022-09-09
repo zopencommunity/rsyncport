@@ -1,0 +1,68 @@
+diff --git a/syscall.c b/syscall.c
+index d92074aa..9ba93019 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -213,8 +213,30 @@ int do_rmdir(const char *pathname)
+ 	return rmdir(pathname);
+ }
+ 
++#ifdef __MVS__
++ #if (__CHARSET_LIB == 1)
++#   include <stdio.h>
++#   include <stdlib.h>
++
++    static int setccsid(int fd, int ccsid)
++    {
++      attrib_t attr;
++      int rc;
++
++      memset(&attr, 0, sizeof(attr));
++      attr.att_filetagchg = 1;
++      attr.att_filetag.ft_ccsid = ccsid;
++      attr.att_filetag.ft_txtflag = 1;
++
++      rc = __fchattr(fd, &attr, sizeof(attr));
++      return rc;
++    }
++  #endif
++#endif
++
+ int do_open(const char *pathname, int flags, mode_t mode)
+ {
++  int fd;
+ 	if (flags != O_RDONLY) {
+ 		RETURN_ERROR_IF(dry_run, 0);
+ 		RETURN_ERROR_IF_RO_OR_LO;
+@@ -225,7 +247,8 @@ int do_open(const char *pathname, int flags, mode_t mode)
+ 		flags |= O_NOATIME;
+ #endif
+ 
+-	return open(pathname, flags | O_BINARY, mode);
++	fd = open(pathname, flags | O_BINARY, mode);
++  return fd;
+ }
+ 
+ #ifdef HAVE_CHMOD
+@@ -344,6 +367,11 @@ int do_mkstemp(char *template, mode_t perms)
+ 		}
+ #if defined HAVE_SETMODE && O_BINARY
+ 		setmode(fd, O_BINARY);
++#endif
++#ifdef __MVS__
++  #if (__CHARSET_LIB == 1)
++    setccsid(fd, 819);
++  #endif
+ #endif
+ 		return fd;
+ 	}
+@@ -710,5 +738,10 @@ int do_open_nofollow(const char *pathname, int flags)
+ 	}
+ #endif
+ 
++#ifdef __MVS__
++  #if (__CHARSET_LIB == 1)
++    setccsid(fd, 819);
++  #endif
++#endif  
+ 	return fd;
+ }
