@@ -41,6 +41,15 @@ export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZS
 
 zopen_check_results()
 {
-  return 3 # non-functional
-}
+# Results should be an overall result no more than 17
+#
+set -x
+chk="$2_check.log"
 
+failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }'
+if [ ${failures} -gt 17 ]; then
+  return 2
+else
+  return 1
+fi
+}
