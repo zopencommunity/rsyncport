@@ -41,6 +41,7 @@ export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZS
 
 zopen_check_results()
 {
+#
 # Results should be an overall result no more than 17
 #
 set -x
