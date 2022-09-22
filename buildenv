@@ -48,7 +48,13 @@ set -x
 chk="$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-if [ ${failures} -gt 17 ]; then
+expectedFailures=17
+totalTests=44
+
+echo "actualFailures:${failures}"
+echo "expectedFailures:${expectedFailures}"
+echo "totalTests:${totalTests}"
+if [ ${failures} -gt ${expectedFailures} ]; then
   return 2
 else
   return 1
