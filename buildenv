@@ -9,8 +9,7 @@ export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZO
 export ZOPEN_TARBALL_DEPS="curl gzip make automake autoconf m4 perl"
 
 export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_GIT_DEPS="curl gzip make automake autoconf m4 perl gawk openssl xxhash zstd lz4"
-export ZOPEN_EXTRA_CFLAGS='-qnocsect'
+export ZOPEN_GIT_DEPS="git curl gzip make automake autoconf m4 perl gawk openssl xxhash zstd lz4"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
@@ -35,16 +34,15 @@ fi
 # Should be able to add zlib here and popt (once popt is ported)
 #
 export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto"
-export ZOPEN_EXTRA_CFLAGS="-qnocsect"
 export ZOPEN_EXTRA_CPPFLAGS="-I./zlib -I./popt -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include"
 export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib"
+export PERL="/bin/env perl"
 
 zopen_check_results()
 {
 #
 # Results should be an overall result no more than 17
 #
-set -x
 chk="$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
@@ -54,9 +52,4 @@ totalTests=44
 echo "actualFailures:${failures}"
 echo "expectedFailures:${expectedFailures}"
 echo "totalTests:${totalTests}"
-if [ ${failures} -gt ${expectedFailures} ]; then
-  return 2
-else
-  return 1
-fi
 }
