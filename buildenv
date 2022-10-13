@@ -6,10 +6,10 @@ export ZOPEN_TYPE="GIT"
 
 ZOPEN_TARBALL_DIR=v3.2.4
 export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
-export ZOPEN_TARBALL_DEPS="curl gzip make automake autoconf m4 perl"
+export ZOPEN_TARBALL_DEPS="curl gzip m4 perl make autoconf automake"
 
 export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_GIT_DEPS="git curl gzip make automake autoconf m4 perl gawk openssl xxhash zstd lz4"
+export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
