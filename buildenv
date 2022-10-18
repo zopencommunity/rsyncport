@@ -14,7 +14,7 @@ export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
 # python3 -mpip install --user commonmark
-# For TARBALL, emporary hack - the tarball name does not match the directory - create a sym link to help zopen-build out
+# For TARBALL, temporary hack - the tarball name does not match the directory - create a sym link to help zopen-build out
 #
 if [ "${ZOPEN_TYPE}" = "GIT" ]; then
   export ZOPEN_BOOTSTRAP=skip
@@ -35,7 +35,7 @@ fi
 #
 export ZOPEN_EXTRA_CONFIGURE_OPTS='--with-included-zlib=no'
 export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
-export ZOPEN_EXTRA_CPPFLAGS="-qnose -I./popt -I\${ZOPEN_ROOT}/patches/PR3 -I/usr/include/le -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
+export ZOPEN_EXTRA_CPPFLAGS="-qnose -I\${RSYNC_INC} -I./popt -I\${ZOPEN_ROOT}/patches/PR3 -I/usr/include/le -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
 export ZOPEN_EXTRA_CFLAGS='-Wc,GONUM'
 export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib -L\${ZLIB_HOME}/lib"
 export PERL="/bin/env perl"
