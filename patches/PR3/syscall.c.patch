@@ -1,5 +1,5 @@
 diff --git a/syscall.c b/syscall.c
-index d92074aa..ca0d80e1 100644
+index d92074aa..3f41603d 100644
 --- a/syscall.c
 +++ b/syscall.c
 @@ -77,6 +77,66 @@ struct create_time {
@@ -46,7 +46,7 @@ index d92074aa..ca0d80e1 100644
 +}
 +
 +static inline unsigned int
-+to_zos_mode(mode_t mode)
++to_zos_mode(mode_t inmode)
 +{
 +  unsigned int outmode = (unsigned int) (inmode & 0x0FFF);
 +
