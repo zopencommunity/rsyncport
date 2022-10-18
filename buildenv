@@ -33,9 +33,10 @@ fi
 # 
 # Should be able to add zlib here and popt (once popt is ported)
 #
-export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto"
-export ZOPEN_EXTRA_CPPFLAGS="-I./zlib -I./popt -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include"
-export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib"
+export ZOPEN_EXTRA_CONFIGURE_OPTS='--with-included-zlib=no'
+export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
+export ZOPEN_EXTRA_CPPFLAGS="-qnose -I./popt -I./ -I/usr/include/le -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
+export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib -L\${ZLIB_HOME}/lib"
 export PERL="/bin/env perl"
 
 zopen_check_results()

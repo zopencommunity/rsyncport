@@ -1,5 +1,5 @@
 diff --git a/rsync.h b/rsync.h
-index e29c37c3..16a20ce9 100644
+index 2c5e5376..6f9d74f6 100644
 --- a/rsync.h
 +++ b/rsync.h
 @@ -449,6 +449,13 @@ enum delret {
@@ -30,55 +30,3 @@ index e29c37c3..16a20ce9 100644
  #ifdef MAKEDEV_TAKES_3_ARGS
  #define MAKEDEV(devmajor,devminor) makedev(0,devmajor,devminor)
  #else
-@@ -803,11 +817,19 @@ union file_extras64 {
- #endif
- };
- 
-+#ifdef __MVS__
-+#pragma pack(2)    
-+#endif
-+
- struct file_struct {
- 	const char *dirname;	/* The dir info inside the transfer */
- 	time_t modtime;		/* When the item was last modified */
- 	uint32 len32;		/* Lowest 32 bits of the file's length */
-+#ifdef __MVS__
-+	uint32 mode;		/* The item's type and permissions */
-+#else
- 	uint16 mode;		/* The item's type and permissions */
-+#endif
- 	uint16 flags;		/* The FLAG_* bits for this item */
- #ifdef USE_FLEXIBLE_ARRAY
- 	const char basename[];	/* The basename (AKA filename) follows */
-@@ -815,6 +837,9 @@ struct file_struct {
- 	const char basename[1];	/* A kluge that should work like a flexible array */
- #endif
- };
-+#ifdef __MVS__
-+#pragma pack(reset)
-+#endif
- 
- extern int file_extra_cnt;
- extern int inc_recurse;
-@@ -1274,11 +1299,19 @@ extern int errno;
- #define CHMOD_BITS (S_ISUID | S_ISGID | S_ISVTX | ACCESSPERMS)
- 
- #ifndef _S_IFMT
--#define _S_IFMT        0170000
-+  #ifdef S_IFMT
-+    #define _S_IFMT S_IFMT
-+  #else
-+    #define _S_IFMT        0170000
-+  #endif
- #endif
- 
- #ifndef _S_IFLNK
--#define _S_IFLNK  0120000
-+  #ifdef S_IFLNK
-+    #define _S_IFLNK S_IFLNK
-+  #else
-+    #define _S_IFLNK  0120000
-+  #endif
- #endif
- 
- #ifndef S_ISLNK
