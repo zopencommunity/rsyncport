@@ -1,5 +1,5 @@
 diff --git a/syscall.c b/syscall.c
-index d92074aa..f8d2bf95 100644
+index d92074aa..b844fc44 100644
 --- a/syscall.c
 +++ b/syscall.c
 @@ -77,6 +77,68 @@ struct create_time {
@@ -198,7 +198,7 @@ index d92074aa..f8d2bf95 100644
  #endif
  		return fd;
  	}
-@@ -354,6 +444,39 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -354,6 +444,35 @@ int do_mkstemp(char *template, mode_t perms)
  #endif
  }
  
@@ -206,12 +206,8 @@ index d92074aa..f8d2bf95 100644
 +int do_stat(const char *path, STRUCT_STAT *st)
 +{
 +        int rc = stat(path, st);
-+rprintf(FERROR, "stat %s\n", path);
 +        if (!rc) {
-+rprintf(FERROR, "mode before:0x%x\n", st->st_mode);
 +             st->st_mode = to_linux_mode(st->st_mode);
-+
-+rprintf(FERROR, "mode after:0x%x\n", st->st_mode);
 +        }
 +        return rc;
 +}
@@ -238,7 +234,7 @@ index d92074aa..f8d2bf95 100644
  int do_stat(const char *path, STRUCT_STAT *st)
  {
  #ifdef USE_STAT64_FUNCS
-@@ -385,6 +508,8 @@ int do_fstat(int fd, STRUCT_STAT *st)
+@@ -385,6 +504,8 @@ int do_fstat(int fd, STRUCT_STAT *st)
  #endif
  }
  
@@ -247,7 +243,7 @@ index d92074aa..f8d2bf95 100644
  OFF_T do_lseek(int fd, OFF_T offset, int whence)
  {
  #ifdef HAVE_LSEEK64
-@@ -710,5 +835,10 @@ int do_open_nofollow(const char *pathname, int flags)
+@@ -710,5 +831,10 @@ int do_open_nofollow(const char *pathname, int flags)
  	}
  #endif
  
