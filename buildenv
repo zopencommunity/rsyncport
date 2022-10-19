@@ -47,7 +47,7 @@ zopen_check_results()
 chk="$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-expectedFailures=7
+expectedFailures=5
 totalTests=44
 
 echo "actualFailures:${failures}"
