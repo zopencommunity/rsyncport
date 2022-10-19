@@ -1,8 +1,8 @@
 diff --git a/syscall.c b/syscall.c
-index d92074aa..3f41603d 100644
+index d92074aa..f8d2bf95 100644
 --- a/syscall.c
 +++ b/syscall.c
-@@ -77,6 +77,66 @@ struct create_time {
+@@ -77,6 +77,68 @@ struct create_time {
  
  #define RETURN_ERROR_IF_RO_OR_LO RETURN_ERROR_IF(read_only || list_only, EROFS)
  
@@ -23,6 +23,8 @@ index d92074aa..3f41603d 100644
 +#  define ZOS_S_IFLNK       0x05000000	/* symbolic link */
 +#  define ZOS_S_IFSOCK      0x07000000  /* socket */
 +
++#  define ZOS_S_IFMT        0xFF000000  /* mask */
++
 +/*
 + * z/OS has a 'mode_t' that is 32 bits in size, whereas
 + * Linux has a 'mode_t' that is 16 bits in size.
@@ -33,22 +35,22 @@ index d92074aa..3f41603d 100644
 +static inline mode_t 
 +to_linux_mode(unsigned int inmode)
 +{
-+  mode_t outmode = (mode_t) (inmode & 0x0FFF);
++  mode_t outmode = (mode_t) (inmode & 0777);
 +
-+  if (inmode & ZOS_S_IFIFO) { outmode |= LINUX_S_IFIFO; }
-+  if (inmode & ZOS_S_IFCHR) { outmode |= LINUX_S_IFCHR; }
-+  if (inmode & ZOS_S_IFDIR) { outmode |= LINUX_S_IFDIR; }
-+  if (inmode & ZOS_S_IFBLK) { outmode |= LINUX_S_IFBLK; }
-+  if (inmode & ZOS_S_IFREG) { outmode |= LINUX_S_IFREG; }
-+  if (inmode & ZOS_S_IFLNK) { outmode |= LINUX_S_IFLNK; }
-+  if (inmode & ZOS_S_IFSOCK) { outmode |= LINUX_S_IFSOCK; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFIFO) { outmode |= LINUX_S_IFIFO; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFCHR) { outmode |= LINUX_S_IFCHR; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFDIR) { outmode |= LINUX_S_IFDIR; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFBLK) { outmode |= LINUX_S_IFBLK; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFREG) { outmode |= LINUX_S_IFREG; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFLNK) { outmode |= LINUX_S_IFLNK; }
++  if ((inmode & ZOS_S_IFMT) == ZOS_S_IFSOCK) { outmode |= LINUX_S_IFSOCK; }
 +  return outmode;
 +}
 +
 +static inline unsigned int
 +to_zos_mode(mode_t inmode)
 +{
-+  unsigned int outmode = (unsigned int) (inmode & 0x0FFF);
++  unsigned int outmode = (unsigned int) (inmode & 0777);
 +
 +  if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
 +  if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
@@ -69,7 +71,7 @@ index d92074aa..3f41603d 100644
  int do_unlink(const char *path)
  {
  	if (dry_run) return 0;
-@@ -163,7 +223,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
+@@ -163,7 +225,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
  
  	/* For --fake-super, we create a normal file with mode 0600. */
  	if (am_root < 0) {
@@ -78,7 +80,7 @@ index d92074aa..3f41603d 100644
  		if (fd < 0 || close(fd) < 0)
  			return -1;
  		return 0;
-@@ -171,7 +231,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
+@@ -171,7 +233,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
  
  #if !defined MKNOD_CREATES_FIFOS && defined HAVE_MKFIFO
  	if (S_ISFIFO(mode))
@@ -87,7 +89,7 @@ index d92074aa..3f41603d 100644
  #endif
  #if !defined MKNOD_CREATES_SOCKETS && defined HAVE_SYS_UN_H
  	if (S_ISSOCK(mode)) {
-@@ -200,7 +260,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
+@@ -200,7 +262,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
  	}
  #endif
  #ifdef HAVE_MKNOD
@@ -96,7 +98,7 @@ index d92074aa..3f41603d 100644
  #else
  	return -1;
  #endif
-@@ -213,8 +273,30 @@ int do_rmdir(const char *pathname)
+@@ -213,8 +275,30 @@ int do_rmdir(const char *pathname)
  	return rmdir(pathname);
  }
  
@@ -127,7 +129,7 @@ index d92074aa..3f41603d 100644
  	if (flags != O_RDONLY) {
  		RETURN_ERROR_IF(dry_run, 0);
  		RETURN_ERROR_IF_RO_OR_LO;
-@@ -225,7 +307,8 @@ int do_open(const char *pathname, int flags, mode_t mode)
+@@ -225,7 +309,8 @@ int do_open(const char *pathname, int flags, mode_t mode)
  		flags |= O_NOATIME;
  #endif
  
@@ -137,7 +139,7 @@ index d92074aa..3f41603d 100644
  }
  
  #ifdef HAVE_CHMOD
-@@ -240,7 +323,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -240,7 +325,7 @@ int do_chmod(const char *path, mode_t mode)
  	switch (switch_step) {
  #ifdef HAVE_LCHMOD
  	case 0:
@@ -146,7 +148,7 @@ index d92074aa..3f41603d 100644
  			break;
  		if (errno == ENOSYS)
  			switch_step++;
-@@ -252,7 +335,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -252,7 +337,7 @@ int do_chmod(const char *path, mode_t mode)
  		if (S_ISLNK(mode)) {
  # if defined HAVE_SETATTRLIST
  			struct attrlist attrList;
@@ -155,7 +157,7 @@ index d92074aa..3f41603d 100644
  
  			memset(&attrList, 0, sizeof attrList);
  			attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
-@@ -265,7 +348,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -265,7 +350,7 @@ int do_chmod(const char *path, mode_t mode)
  			code = 1;
  # endif
  		} else
@@ -164,7 +166,7 @@ index d92074aa..3f41603d 100644
  		break;
  	}
  	if (code != 0 && (preserve_perms || preserve_executability))
-@@ -320,7 +403,7 @@ int do_mkdir(char *path, mode_t mode)
+@@ -320,7 +405,7 @@ int do_mkdir(char *path, mode_t mode)
  	if (dry_run) return 0;
  	RETURN_ERROR_IF_RO_OR_LO;
  	trim_trailing_slashes(path);
@@ -173,7 +175,7 @@ index d92074aa..3f41603d 100644
  }
  
  /* like mkstemp but forces permissions */
-@@ -335,7 +418,7 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -335,7 +420,7 @@ int do_mkstemp(char *template, mode_t perms)
  		int fd = mkstemp(template);
  		if (fd == -1)
  			return -1;
@@ -182,7 +184,7 @@ index d92074aa..3f41603d 100644
  			int errno_save = errno;
  			close(fd);
  			unlink(template);
-@@ -343,7 +426,12 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -343,7 +428,12 @@ int do_mkstemp(char *template, mode_t perms)
  			return -1;
  		}
  #if defined HAVE_SETMODE && O_BINARY
@@ -196,7 +198,56 @@ index d92074aa..3f41603d 100644
  #endif
  		return fd;
  	}
-@@ -710,5 +798,10 @@ int do_open_nofollow(const char *pathname, int flags)
+@@ -354,6 +444,39 @@ int do_mkstemp(char *template, mode_t perms)
+ #endif
+ }
+ 
++#ifdef __MVS__
++int do_stat(const char *path, STRUCT_STAT *st)
++{
++        int rc = stat(path, st);
++rprintf(FERROR, "stat %s\n", path);
++        if (!rc) {
++rprintf(FERROR, "mode before:0x%x\n", st->st_mode);
++             st->st_mode = to_linux_mode(st->st_mode);
++
++rprintf(FERROR, "mode after:0x%x\n", st->st_mode);
++        }
++        return rc;
++}
++
++int do_lstat(const char *path, STRUCT_STAT *st)
++{
++        int rc = lstat(path, st);
++        if (!rc) {
++             st->st_mode = to_linux_mode(st->st_mode);
++        }
++        return rc;
++}
++
++int do_fstat(int fd, STRUCT_STAT *st)
++{
++        int rc = fstat(fd, st);
++        if (!rc) {
++             st->st_mode = to_linux_mode(st->st_mode);
++        }
++        return rc;
++}
++#else
++
+ int do_stat(const char *path, STRUCT_STAT *st)
+ {
+ #ifdef USE_STAT64_FUNCS
+@@ -385,6 +508,8 @@ int do_fstat(int fd, STRUCT_STAT *st)
+ #endif
+ }
+ 
++#endif
++
+ OFF_T do_lseek(int fd, OFF_T offset, int whence)
+ {
+ #ifdef HAVE_LSEEK64
+@@ -710,5 +835,10 @@ int do_open_nofollow(const char *pathname, int flags)
  	}
  #endif
  
