@@ -1,4 +1,3 @@
-#!/bin/sh
 #
 # Set up environment variables for general build tool to operate
 #
@@ -44,7 +43,7 @@ zopen_check_results()
 #
 # Results should be an overall result no more than 17
 #
-chk="$2_check.log"
+chk="$1/$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
 expectedFailures=5
