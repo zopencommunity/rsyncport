@@ -1,9 +1,7 @@
-As of September 9th, 2022
-
-------------------------------------------------------------
------ overall results:
-      16 passed
-      17 failed
-      11 skipped
-------------------------------------------------------------
-overall result is 17
+FAIL    alt-dest
+FAIL    backup
+FAIL    batch-mode
+FAIL    chmod-temp-dir
+FAIL    exclude
+FAIL    exclude-lsh
+FAIL    itemize
