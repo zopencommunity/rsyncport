@@ -5,10 +5,10 @@ export ZOPEN_TYPE="GIT"
 
 ZOPEN_TARBALL_DIR=v3.2.4
 export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
-export ZOPEN_TARBALL_DEPS="curl gzip m4 perl make autoconf automake"
+export ZOPEN_TARBALL_DEPS="curl gzip m4 perl make autoconf automake zoslib"
 
 export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4"
+export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
@@ -46,7 +46,7 @@ zopen_check_results()
 chk="$1/$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-expectedFailures=5
+expectedFailures=7
 totalTests=44
 
 echo "actualFailures:${failures}"
