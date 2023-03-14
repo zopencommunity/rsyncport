@@ -17,17 +17,26 @@ export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl
 #
 if [ "${ZOPEN_TYPE}" = "GIT" ]; then
   export ZOPEN_BOOTSTRAP=skip
-	if ! type python3 >/dev/null || ! ( pip3 freeze | grep -q commonmark ); then
-		echo "need python3 with commonmark package set up for build of rsync" >&2
-		return 4
-	fi
-	export PATH=${HOME}/.local/bin:$PATH
   RSYNC_INC="${ZOPEN_ROOT}/rsync"
 else
 	rm "${ZOPEN_TARBALL_DIR}"
 	ln -s "rsync-3.2.4" "${ZOPEN_TARBALL_DIR}"
   RSYNC_INC="${ZOPEN_ROOT}/${ZOPEN_TARBALL_DIR}"
 fi
+
+# Requires commonmark
+zopen_init()
+{
+  if [ "${ZOPEN_TYPE}" = "GIT" ]; then
+    if ! type python3 >/dev/null ; then
+      printError "need python3 with commonmark package set up for build of rsync"
+    fi
+    if ! ( pip3 freeze | grep -q commonmark ); then
+      pip3 install commonmark
+    fi
+    export PATH=${HOME}/.local/bin:$PATH
+  fi
+}
 
 # 
 # Should be able to add zlib here and popt (once popt is ported)
