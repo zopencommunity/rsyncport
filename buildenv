@@ -32,12 +32,6 @@ zopen_init()
       printError "need python3 with commonmark package set up for build of rsync"
     fi
 
-    # msf - this should really be in pythonport...
-
-    PYTHON_PATH=$(dirname $(/bin/type python3 | cut -f3 -d' '))
-    PYTHON_LIBPATH=$( cd ${PYTHON_PATH}/../lib; echo $PWD)
-
-    export LIBPATH="${PYTHON_LIBPATH}":"/lib/lpp/hzc/lib":${LIBPATH}
     if ! ( pip3 freeze | grep -q commonmark ); then
       pip3 install commonmark
     fi
