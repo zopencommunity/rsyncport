@@ -1,21 +1,21 @@
 #
 # Set up environment variables for general build tool to operate
 #
-export ZOPEN_TYPE="GIT"
+export ZOPEN_BUILD_LINE="DEV"
 
-ZOPEN_TARBALL_DIR=v3.2.4
-export ZOPEN_TARBALL_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
-export ZOPEN_TARBALL_DEPS="curl gzip m4 perl make autoconf automake zoslib"
+#ZOPEN_TARBALL_DIR=v3.2.4
+#export ZOPEN_STABLE_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
+#export ZOPEN_STABLE_DEPS="curl gzip m4 perl make autoconf automake zoslib"
 
-export ZOPEN_GIT_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_GIT_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib"
+export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
+export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib python"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
 # python3 -mpip install --user commonmark
 # For TARBALL, temporary hack - the tarball name does not match the directory - create a sym link to help zopen-build out
 #
-if [ "${ZOPEN_TYPE}" = "GIT" ]; then
+if [ "${ZOPEN_BUILD_LINE}" = "DEV" ]; then
   export ZOPEN_BOOTSTRAP=skip
   RSYNC_INC="${ZOPEN_ROOT}/rsync"
 else
@@ -27,10 +27,11 @@ fi
 # Requires commonmark
 zopen_init()
 {
-  if [ "${ZOPEN_TYPE}" = "GIT" ]; then
+  if [ "${ZOPEN_BUILD_LINE}" = "DEV" ]; then
     if ! type python3 >/dev/null ; then
       printError "need python3 with commonmark package set up for build of rsync"
     fi
+
     if ! ( pip3 freeze | grep -q commonmark ); then
       pip3 install commonmark
     fi
@@ -46,6 +47,11 @@ export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
 export ZOPEN_EXTRA_CPPFLAGS="-Wc,GONUM -qnose -I\${RSYNC_INC} -I./popt -I\${ZOPEN_ROOT}/patches/PR3 -I/usr/include/le -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
 export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib -L\${ZLIB_HOME}/lib"
 export PERL="/bin/env perl"
+
+zopen_get_version()
+{
+  ./rsync --version | head -1 | awk '{print $3; }'
+}
 
 zopen_check_results()
 {
