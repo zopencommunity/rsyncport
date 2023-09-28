@@ -25,18 +25,22 @@ else
 fi
 
 # Requires commonmark
+
 zopen_init()
 {
   if [ "${ZOPEN_BUILD_LINE}" = "DEV" ]; then
     if ! type python3 >/dev/null ; then
       printError "need python3 with commonmark package set up for build of rsync"
     fi
-
-    if ! ( pip3 freeze | grep -q commonmark ); then
-      pip3 install commonmark
-    fi
-    export PATH=${HOME}/.local/bin:$PATH
+    python3 -m venv rsync_python
+    . ./rsync_python/bin/activate
+    pip3 install commonmark
   fi
+}
+
+zopen_term()
+{
+  deactivate
 }
 
 # 
