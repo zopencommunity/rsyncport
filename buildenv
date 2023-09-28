@@ -38,7 +38,7 @@ zopen_init()
   fi
 }
 
-zopen_term()
+zopen_terminate()
 {
   deactivate
 }
