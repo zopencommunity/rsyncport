@@ -1,12 +1,9 @@
-#
-# Set up environment variables for general build tool to operate
-#
+# bump: rsync-version /RSYNC_VERSION="(.*)"/ https://github.com/WayneD/rsync.git|semver:*
+RSYNC_VERSION="3.2.4"
+
 export ZOPEN_BUILD_LINE="DEV"
-
-#ZOPEN_TARBALL_DIR=v3.2.4
-#export ZOPEN_STABLE_URL="https://github.com/WayneD/rsync/archive/refs/tags/${ZOPEN_TARBALL_DIR}.tar.gz"
-#export ZOPEN_STABLE_DEPS="curl gzip m4 perl make autoconf automake zoslib"
-
+# export ZOPEN_STABLE_URL="https://github.com/WayneD/rsync/archive/refs/tags/v${RSYNC_VERSION}.tar.gz"
+# export ZOPEN_STABLE_DEPS="curl gzip m4 perl make autoconf automake zoslib"
 export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
 export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib python"
 
@@ -19,9 +16,10 @@ if [ "${ZOPEN_BUILD_LINE}" = "DEV" ]; then
   export ZOPEN_BOOTSTRAP=skip
   RSYNC_INC="${ZOPEN_ROOT}/rsync"
 else
-	rm "${ZOPEN_TARBALL_DIR}"
-	ln -s "rsync-3.2.4" "${ZOPEN_TARBALL_DIR}"
-  RSYNC_INC="${ZOPEN_ROOT}/${ZOPEN_TARBALL_DIR}"
+ 	rm "v${RSYNC_VERSION}"
+ 	ln -s "rsync-${RSYNC_VERSION}" "v${RSYNC_VERSION}"
+   RSYNC_INC="${ZOPEN_ROOT}/v${RSYNC_VERSION}"
+
 fi
 
 # Requires commonmark
