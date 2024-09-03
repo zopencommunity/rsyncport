@@ -5,25 +5,6 @@
  * since we are working internally in rsync with mode_t being a Linux
  * mode_t and not a z/OS mode_t (i.e. 16 bits and not 32 bits)
  */
-                   ??=ifndef __stat
-                   #define __stat 1
-                   #pragma nomargins nosequence
-                   #pragma checkout(suspend)
-  /***************************************************************
-  * <sys/stat.h> header file                                     *
-  *                                                              *
-  * LICENSED MATERIALS - PROPERTY OF IBM                         *
-  *                                                              *
-  * 5694-A01                                                     *
-  *                                                              *
-  * COPYRIGHT IBM CORP. 1988, 2010                               *
-  *                                                              *
-  * US GOVERNMENT USERS RESTRICTED RIGHTS - USE,                 *
-  * DUPLICATION OR DISCLOSURE RESTRICTED BY GSA ADP              *
-  * SCHEDULE CONTRACT WITH IBM CORP.                             *
-  *                                                              *
-  * STATUS = HLE7770                                             *
-  ***************************************************************/
  
   #if defined(__IBM_METAL__) 
  
