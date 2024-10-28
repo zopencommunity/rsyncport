@@ -2,6 +2,7 @@
 RSYNC_VERSION="3.2.7"
 
 export ZOPEN_BUILD_LINE="DEV"
+export ZOPEN_CATEGORIES="utilities"
 # export ZOPEN_STABLE_URL="https://github.com/WayneD/rsync/archive/refs/tags/v${RSYNC_VERSION}.tar.gz"
 # export ZOPEN_STABLE_DEPS="curl gzip m4 perl make autoconf automake zoslib"
 export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
