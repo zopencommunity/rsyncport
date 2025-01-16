@@ -1,5 +1,5 @@
 # bump: rsync-version /RSYNC_VERSION="(.*)"/ https://github.com/WayneD/rsync.git|semver:*
-RSYNC_VERSION="3.2.7"
+RSYNC_VERSION="3.4.1"
 
 export ZOPEN_BUILD_LINE="DEV"
 export ZOPEN_CATEGORIES="utilities"
