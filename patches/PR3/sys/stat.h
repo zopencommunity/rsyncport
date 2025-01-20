@@ -1,4 +1,5 @@
-
+#ifndef STATS_ZOS_H_
+#define STATS_ZOS_H_
 /*
  * This is the same as the z/OS system header except
  * that the mode_t variables have been marked as unsigned int

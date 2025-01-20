@@ -1,12 +1,12 @@
-# bump: rsync-version /RSYNC_VERSION="(.*)"/ https://github.com/WayneD/rsync.git|semver:*
-RSYNC_VERSION="3.2.7"
+# bump: rsync-version /RSYNC_VERSION="(.*)"/ https://github.com/RsyncProject/rsync|semver:*
+RSYNC_VERSION="3.4.1"
 
-export ZOPEN_BUILD_LINE="DEV"
+export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_CATEGORIES="utilities"
-# export ZOPEN_STABLE_URL="https://github.com/WayneD/rsync/archive/refs/tags/v${RSYNC_VERSION}.tar.gz"
-# export ZOPEN_STABLE_DEPS="curl gzip m4 perl make autoconf automake zoslib"
+export ZOPEN_STABLE_URL="https://download.samba.org/pub/rsync/src/rsync-${RSYNC_VERSION}.tar.gz"
+export ZOPEN_STABLE_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt"
 export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python"
+export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
@@ -17,13 +17,8 @@ if [ "${ZOPEN_BUILD_LINE}" = "DEV" ]; then
   export ZOPEN_BOOTSTRAP=skip
   RSYNC_INC="${ZOPEN_ROOT}/rsync"
 else
- 	rm "v${RSYNC_VERSION}"
- 	ln -s "rsync-${RSYNC_VERSION}" "v${RSYNC_VERSION}"
-   RSYNC_INC="${ZOPEN_ROOT}/v${RSYNC_VERSION}"
-
+  RSYNC_INC="${ZOPEN_ROOT}/v${RSYNC_VERSION}"
 fi
-
-# Requires commonmark
 
 zopen_init()
 {
@@ -42,11 +37,8 @@ zopen_terminate()
   deactivate
 }
 
-# 
-# Should be able to add zlib here and popt (once popt is ported)
-#
 export ZOPEN_EXTRA_CONFIGURE_OPTS='--with-included-zlib=no'
-export LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
+export ZOPEN_EXTRA_LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
 export ZOPEN_EXTRA_CPPFLAGS="-I\${RSYNC_INC} -I./popt -I\${ZOPEN_ROOT}/patches/PR3 -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
 export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib -L\${ZLIB_HOME}/lib"
 export PERL="/bin/env perl"
@@ -59,12 +51,12 @@ zopen_get_version()
 zopen_check_results()
 {
 #
-# Results should be an overall result no more than 17
+# Results should be an overall result no more than 13
 #
 chk="$1/$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-expectedFailures=7
+expectedFailures=13
 totalTests=44
 
 echo "actualFailures:${failures}"
