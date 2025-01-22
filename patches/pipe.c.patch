@@ -1,5 +1,5 @@
 diff --git a/pipe.c b/pipe.c
-index 3e5f038..9cc0bcf 100644
+index 3e5f038..b6b962f 100644
 --- a/pipe.c
 +++ b/pipe.c
 @@ -93,6 +93,12 @@ pid_t piped_child(char **command, int *f_in, int *f_out)
@@ -20,7 +20,7 @@ index 3e5f038..9cc0bcf 100644
  	*f_out = to_child_pipe[1];
  
 +#ifdef __MVS__
-+  struct f_cnvrt cvtreq = {SETCVTON, 0, 1047};
++  struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
 +  fcntl(*f_in, F_CONTROL_CVT, &cvtreq);
 +  fcntl(*f_out, F_CONTROL_CVT, &cvtreq);
 +#endif
