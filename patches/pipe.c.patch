@@ -1,0 +1,29 @@
+diff --git a/pipe.c b/pipe.c
+index 3e5f038..b6b962f 100644
+--- a/pipe.c
++++ b/pipe.c
+@@ -93,6 +93,12 @@ pid_t piped_child(char **command, int *f_in, int *f_out)
+ 	*f_in = from_child_pipe[0];
+ 	*f_out = to_child_pipe[1];
+ 
++#ifdef __MVS__
++  struct f_cnvrt cvtreq = {SETCVTON, 0, 1047};
++  fcntl(*f_in, F_CONTROL_CVT, &cvtreq);
++  fcntl(*f_out, F_CONTROL_CVT, &cvtreq);
++#endif
++
+ 	return pid;
+ }
+ 
+@@ -174,5 +180,11 @@ pid_t local_child(int argc, char **argv, int *f_in, int *f_out,
+ 	*f_in = from_child_pipe[0];
+ 	*f_out = to_child_pipe[1];
+ 
++#ifdef __MVS__
++  struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
++  fcntl(*f_in, F_CONTROL_CVT, &cvtreq);
++  fcntl(*f_out, F_CONTROL_CVT, &cvtreq);
++#endif
++
+ 	return pid;
+ }
