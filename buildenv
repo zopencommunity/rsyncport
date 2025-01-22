@@ -4,9 +4,11 @@ RSYNC_VERSION="3.4.1"
 export ZOPEN_BUILD_LINE="STABLE"
 export ZOPEN_CATEGORIES="utilities"
 export ZOPEN_STABLE_URL="https://download.samba.org/pub/rsync/src/rsync-${RSYNC_VERSION}.tar.gz"
-export ZOPEN_STABLE_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt"
+export ZOPEN_STABLE_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt openssh coreutils"
 export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
-export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt"
+export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt openssh coreutils"
+
+export ZOPEN_RUNTIME_DEPS="openssh"
 
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
@@ -56,8 +58,8 @@ zopen_check_results()
 chk="$1/$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-expectedFailures=13
-totalTests=44
+expectedFailures=4
+totalTests=35
 
 echo "actualFailures:${failures}"
 echo "expectedFailures:${expectedFailures}"
