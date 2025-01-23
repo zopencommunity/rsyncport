@@ -8,8 +8,6 @@ export ZOPEN_STABLE_DEPS="git curl gzip m4 perl make autoconf automake gawk open
 export ZOPEN_DEV_URL="https://github.com/WayneD/rsync.git"
 export ZOPEN_DEV_DEPS="git curl gzip m4 perl make autoconf automake gawk openssl xxhash zstd lz4 zoslib check_python diffutils sed zlib popt openssh coreutils"
 
-export ZOPEN_RUNTIME_DEPS="openssh"
-
 #
 # For GIT, it needs Python set up and also requires commonmark installed, e.g.
 # python3 -mpip install --user commonmark
