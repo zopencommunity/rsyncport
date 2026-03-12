@@ -1,0 +1,16 @@
+diff --git a/testsuite/relative.test b/testsuite/relative.test
+index 5546291..85291ff 100644
+--- a/testsuite/relative.test
++++ b/testsuite/relative.test
+@@ -6,6 +6,11 @@
+ 
+ . "$suitedir/rsync.fns"
+ 
++# Add --no-zos-tags to avoid 'p' in itemized output on z/OS
++if uname | grep -i "OS/390" >/dev/null; then
++    RSYNC="$RSYNC --no-zos-tags"
++fi
++
+ deepstr='down/3/deep'
+ deepdir="$fromdir/$deepstr"
+ extradir="$fromdir/extra"

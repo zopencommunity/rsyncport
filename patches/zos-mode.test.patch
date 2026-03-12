@@ -1,0 +1,68 @@
+diff --git a/testsuite/zos-mode.test b/testsuite/zos-mode.test
+new file mode 100755
+index 0000000..149677a
+--- /dev/null
++++ b/testsuite/zos-mode.test
+@@ -0,0 +1,62 @@
++#!/bin/sh
++
++# Test rsync preservation of modes on z/OS, ensuring conversion between
++# Linux-style modes and z/OS-style modes works correctly.
++
++. "$suitedir/rsync.fns"
++
++# This test only runs on z/OS
++if ! uname | grep -i "OS/390" >/dev/null; then
++    test_skipped "Skipping z/OS mode test on non-z/OS system"
++fi
++
++mkdir -p "$fromdir"
++mkdir -p "$todir"
++
++# Create different types of files
++echo "regular file" > "$fromdir/file"
++chmod 644 "$fromdir/file"
++
++mkdir "$fromdir/dir"
++chmod 755 "$fromdir/dir"
++
++ln -s "file" "$fromdir/link"
++
++# Test 1: Preserve modes
++runtest "preserve modes" "
++    $RSYNC -av \"$fromdir/\" \"$todir/\" && \
++    [ -f \"$todir/file\" ] && \
++    [ -d \"$todir/dir\" ] && \
++    [ -h \"$todir/link\" ] && \
++    ls -l \"$todir/file\" | grep '^-rw-r--r--' >/dev/null && \
++    ls -ld \"$todir/dir\" | grep '^drwxr-xr-x' >/dev/null && \
++    ls -ld \"$todir/link\" | grep '^lrwxrwxrwx' >/dev/null
++"
++
++# Test 2: Mode update
++chmod 700 "$fromdir/file"
++runtest "update modes" "
++    $RSYNC -av \"$fromdir/\" \"$todir/\" && \
++    ls -l \"$todir/file\" | grep '^-rwx------' >/dev/null
++"
++
++# Test 3: SUID/SGID bits
++# Some environments don't allow setting SUID/SGID bits, so we try and skip if it fails.
++if chmod 6755 "$fromdir/file" 2>/dev/null; then
++    runtest "preserve SUID/SGID bits" "
++        $RSYNC -av \"$fromdir/\" \"$todir/\" && \
++        ls -l \"$todir/file\" | grep '^-rwsr-sr-x' >/dev/null
++    "
++else
++    echo "Skipping SUID/SGID bit test: cannot set bits on $fromdir/file"
++fi
++
++# Test 4: Sticky bit
++mkdir "$fromdir/sticky"
++chmod 1777 "$fromdir/sticky"
++runtest "preserve sticky bit" "
++    $RSYNC -av \"$fromdir/\" \"$todir/\" && \
++    ls -ld \"$todir/sticky\" | grep '^drwxrwxrwt' >/dev/null
++"
++
++exit 0

@@ -1,0 +1,15 @@
+diff --git a/testrun.c b/testrun.c
+index 049e3eb..192ebaf 100644
+--- a/testrun.c
++++ b/testrun.c
+@@ -27,8 +27,8 @@
+ 	}
+ 
+ 	if (pid == 0) {
+-		argv[0] = "sh";
+-		execvp(argv[0], argv);
++		argv[0] = "/bin/sh";
++		execv(argv[0], argv);
+ 		fprintf(stderr, "TESTRUN ERROR: failed to exec %s: %s\n", argv[0], strerror(errno));
+ 		_exit(1);
+ 	}

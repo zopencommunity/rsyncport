@@ -1,5 +1,5 @@
 diff --git a/syscall.c b/syscall.c
-index 34a9bba..c4d2694 100644
+index 34a9bba..fe9166e 100644
 --- a/syscall.c
 +++ b/syscall.c
 @@ -81,6 +81,76 @@ struct create_time {
@@ -35,7 +35,7 @@ index 34a9bba..c4d2694 100644
 +mode_t
 +to_linux_mode(unsigned int inmode)
 +{
-+  mode_t outmode = (mode_t) (inmode & 0777);
++  mode_t outmode = (mode_t) (inmode & 07777);
 +
 +  //rprintf(FINFO, "[DEBUG to_linux_mode] inmode=0x%08x, inmode&ZOS_S_IFMT=0x%08x, ZOS_S_IFREG=0x%08x\n",
 +    //      inmode, inmode & ZOS_S_IFMT, ZOS_S_IFREG);
@@ -58,7 +58,7 @@ index 34a9bba..c4d2694 100644
 +unsigned int
 +to_zos_mode(mode_t inmode)
 +{
-+  unsigned int outmode = (unsigned int) (inmode & 0777);
++  unsigned int outmode = (unsigned int) (inmode & 07777);
 +
 +  if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
 +  if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }

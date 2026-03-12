@@ -1,18 +1,8 @@
 diff --git a/compat.c b/compat.c
-index 4ce8c6d..764f282 100644
+index 4ce8c6d..ac0d5c8 100644
 --- a/compat.c
 +++ b/compat.c
-@@ -47,6 +47,9 @@ extern int preserve_atimes;
- extern int preserve_crtimes;
- extern int preserve_acls;
- extern int preserve_xattrs;
-+#ifdef __MVS__
-+extern int preserve_zos_tags;
-+#endif
- extern int xfer_flags_as_varint;
- extern int need_messages_from_generator;
- extern int delete_mode, delete_before, delete_during, delete_after;
-@@ -87,6 +90,9 @@ int xattr_sum_len = 0;
+@@ -87,6 +87,9 @@ int xattr_sum_len = 0;
  
  /* These index values are for the file-list's extra-attribute array. */
  int pathname_ndx, depth_ndx, atimes_ndx, crtimes_ndx, uid_ndx, gid_ndx, acls_ndx, xattrs_ndx, unsort_ndx;
@@ -22,16 +12,7 @@ index 4ce8c6d..764f282 100644
  
  int receiver_symlink_times = 0; /* receiver can set the time on a symlink */
  int sender_symlink_iconv = 0;	/* sender should convert symlink content */
-@@ -122,7 +128,7 @@ struct name_num_obj valid_compressions = {
- #define CF_CHKSUM_SEED_FIX (1<<5)
- #define CF_INPLACE_PARTIAL_DIR (1<<6)
- #define CF_VARINT_FLIST_FLAGS (1<<7)
--#define CF_ID0_NAMES (1<<8)
-+
- 
- static const char *client_info;
- 
-@@ -592,6 +598,10 @@ void setup_protocol(int f_out,int f_in)
+@@ -592,6 +595,10 @@ void setup_protocol(int f_out,int f_in)
  		acls_ndx = ++file_extra_cnt;
  	if (preserve_xattrs)
  		xattrs_ndx = ++file_extra_cnt;
@@ -42,82 +23,60 @@ index 4ce8c6d..764f282 100644
  
  	if (am_server)
  		set_allow_inc_recurse();
-@@ -599,8 +609,13 @@ void setup_protocol(int f_out,int f_in)
- 	if (remote_protocol == 0) {
- 		if (am_server && !local_server)
- 			check_sub_protocol();
--		if (!read_batch)
-+		if (!read_batch) {
-+#ifdef __MVS__
- 			write_int(f_out, protocol_version);
-+#else
-+			write_int(f_out, protocol_version);
-+#endif
-+		}
- 		remote_protocol = read_int(f_in);
- 		if (protocol_version > remote_protocol)
- 			protocol_version = remote_protocol;
-@@ -726,6 +741,10 @@ void setup_protocol(int f_out,int f_in)
+@@ -726,6 +733,14 @@ void setup_protocol(int f_out,int f_in)
  				compat_flags |= CF_INPLACE_PARTIAL_DIR;
  			if (strchr(client_info, 'u') != NULL)
  				compat_flags |= CF_ID0_NAMES;
 +#ifdef __MVS__
-+			if (strchr(client_info, 'Z') != NULL && preserve_zos_tags)
-+				compat_flags |= CF_ZOS_TAGS;
++				if (DEBUG_GTE(PROTO, 1)) {
++					rprintf(FINFO, "[DEBUG] setup_protocol: client_info='%s', preserve_zos_tags=%d, local_server=%d\n",
++						client_info ? client_info : "NULL", preserve_zos_tags, local_server);
++				}
++				if ((local_server || (client_info && strchr(client_info, 'Z') != NULL)) && preserve_zos_tags)
++					compat_flags |= CF_ZOS_TAGS;
 +#endif
  			if (strchr(client_info, 'v') != NULL) {
  				do_negotiated_strings = 1;
  				compat_flags |= CF_VARINT_FLIST_FLAGS;
-@@ -805,6 +824,52 @@ void setup_protocol(int f_out,int f_in)
- 	}
- #endif
- 
-+#ifdef __MVS__
-+	/*
-+	 * Check negotiated flags for z/OS tag support.
-+	 * This MUST be done after compat_flags are exchanged.
-+	 * If auto-detect (2) or explicit (1) but remote didn't confirm,
-+	 * disable tags and clean up slots.
-+	 */
-+	if (DEBUG_GTE(PROTO, 2))
-+		rprintf(FINFO, "[DEBUG] Checking z/OS tags negotiation. protocol_version=%d, compat_flags=0x%x, CF_ZOS_TAGS=0x%x, preserve_zos_tags=%d\n",
-+			protocol_version, compat_flags, CF_ZOS_TAGS, preserve_zos_tags);
+@@ -751,6 +766,41 @@ void setup_protocol(int f_out,int f_in)
+ 			fprintf(stderr, "Both rsync versions must be at least 3.2.0 for --crtimes.\n");
+ 			exit_cleanup(RERR_PROTOCOL);
+ 		}
 +
-+	if (protocol_version >= 30) {
-+		if (compat_flags & CF_ZOS_TAGS) {
-+	    if (DEBUG_GTE(PROTO, 2))
-+		  	rprintf(FINFO, "[DEBUG] z/OS tags negotiated successfully.\n");
-+			if (preserve_zos_tags == 2)
-+				preserve_zos_tags = 1;
++		#ifdef __MVS__
++		/*
++		 * Check negotiated flags for z/OS tag support.
++		 * This MUST be done after compat_flags are exchanged.
++		 * If auto-detect (2) or explicit (1) but remote didn't confirm,
++		 * disable tags and clean up slots.
++		 */
++		if (protocol_version >= 30) {
++			if (compat_flags & CF_ZOS_TAGS) {
++				if (preserve_zos_tags == 2)
++					preserve_zos_tags = 1;
++			} else {
++				if (preserve_zos_tags == 2) {
++					preserve_zos_tags = 0;
++					/* Back out the slots reserved for z/OS tags. */
++					if (zos_tags_ndx) {
++						file_extra_cnt -= 2;
++						zos_tags_ndx = 0;
++					}
++				} else if (preserve_zos_tags == 1) {
++					rprintf(FWARNING, "Remote does not support z/OS tags. Remote tags will not be preserved.\n");
++				}
++			}
 +		} else {
-+	    if (DEBUG_GTE(PROTO, 2))
-+			  rprintf(FINFO, "[DEBUG] z/OS tags NOT negotiated.\n");
-+			if (preserve_zos_tags == 1) {
-+				rprintf(FWARNING, "Remote does not support z/OS tags. Tags will not be preserved.\n");
-+			}
-+			preserve_zos_tags = 0;
-+			/* Back out the slots reserved for z/OS tags. */
-+			if (zos_tags_ndx) {
-+	      if (DEBUG_GTE(PROTO, 2))
-+			  	rprintf(FINFO, "[DEBUG] Backing out z/OS tag slots.\n");
-+				file_extra_cnt -= 2;
-+				zos_tags_ndx = 0;
++			if (preserve_zos_tags == 2) {
++				preserve_zos_tags = 0;
++				if (zos_tags_ndx) {
++					file_extra_cnt -= 2;
++					zos_tags_ndx = 0;
++				}
 +			}
 +		}
-+	} else {
-+	  if (DEBUG_GTE(PROTO, 2))
-+		  rprintf(FINFO, "[DEBUG] Protocol version < 30, z/OS tags disabled.\n");
-+		/* Pre-30 does not support this negotiation. Assume NO tags unless user forced it (which might fail). */
-+		if (preserve_zos_tags == 2) {
-+			preserve_zos_tags = 0;
-+			if (zos_tags_ndx) {
-+				file_extra_cnt -= 2;
-+				zos_tags_ndx = 0;
-+			}
-+		}
-+	}
-+#endif
++		#endif
 +
- 	negotiate_the_strings(f_in, f_out);
- 
- 	if (am_server) {
+ 		if (am_sender) {
+ 			receiver_symlink_times = am_server
+ 			    ? strchr(client_info, 'L') != NULL

@@ -1,15 +1,15 @@
 diff --git a/rsync.c b/rsync.c
-index b130aba..532d677 100644
+index b130aba..48fd550 100644
 --- a/rsync.c
 +++ b/rsync.c
-@@ -26,11 +26,18 @@
- #elif defined HAVE_LANGINFO_H && defined HAVE_NL_LANGINFO
+@@ -27,10 +27,18 @@
  #include <langinfo.h>
  #endif
+ 
 +#ifdef __MVS__
 +#include <fcntl.h>
 +#endif
- 
++
  extern int dry_run;
  extern int preserve_acls;
  extern int preserve_xattrs;
@@ -21,7 +21,7 @@ index b130aba..532d677 100644
  extern int preserve_executability;
  extern int preserve_mtimes;
  extern int omit_dir_times;
-@@ -669,12 +676,54 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+@@ -669,12 +677,50 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
  	}
  #endif
  
@@ -40,10 +40,6 @@ index b130aba..532d677 100644
 +
 +			if (__chattr(fname, &attr, sizeof(attr)) == 0) {
 +				updated |= UPDATED_MODE; /* Use existing flag for tracking */
-+				if (DEBUG_GTE(OWN, 1)) {
-+					rprintf(FINFO, "set z/OS tags on %s: ccsid=%u txtflag=%u\n",
-+						fname, ccsid, txtflag);
-+				}
 +			} else {
 +				rsyserr(FERROR_XFER, errno, "failed to set z/OS tags on %s", full_fname(fname));
 +			}
@@ -58,7 +54,7 @@ index b130aba..532d677 100644
  			rprintf(FCLIENT, "%s is uptodate\n", fname);
  	}
 +
-+#ifdef __MVS__
++	#ifdef __MVS__
 +	/* Set z/OS file tags if enabled and file is regular */
 +	if (zos_tags_ndx && S_ISREG(new_mode)) {
 +		attrib_t attr;
@@ -71,21 +67,8 @@ index b130aba..532d677 100644
 +			rsyserr(FERROR_XFER, errno, "failed to set file tags on %s", full_fname(fname));
 +		}
 +	}
-+#endif
++	#endif
 +
    cleanup:
  	if (sxp == &sx2)
  		free_stat_x(&sx2);
-@@ -820,6 +869,7 @@ struct file_list *flist_for_ndx(int ndx, const char *fatal_error_loc)
- 	return NULL;
- }
- 
-+#ifndef NO_WHO_AM_I
- const char *who_am_i(void)
- {
- 	if (am_starting_up)
-@@ -829,3 +879,4 @@ const char *who_am_i(void)
- 	     : am_receiver ? "receiver"
- 	     : "Receiver"; /* pre-forked receiver */
- }
-+#endif
