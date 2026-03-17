@@ -1,5 +1,5 @@
 diff --git a/flist.c b/flist.c
-index 1783253..c6a81de 100644
+index 1783253..dc5cc86 100644
 --- a/flist.c
 +++ b/flist.c
 @@ -48,6 +48,10 @@ extern int preserve_uid;
@@ -95,7 +95,7 @@ index 1783253..c6a81de 100644
  
  	if (basename != thisname) {
  		file->dirname = lastdir;
-@@ -1482,6 +1526,12 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
+@@ -1482,6 +1526,21 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
  	if (crtimes_ndx)
  		F_CRTIME(file) = get_create_time(fname, &st);
  #endif
@@ -103,6 +103,15 @@ index 1783253..c6a81de 100644
 +	if (zos_tags_ndx && S_ISREG(st.st_mode)) {
 +		F_ZOS_CCSID(file) = st.st_tag.ft_ccsid;
 +		F_ZOS_TXTFLAG(file) = st.st_tag.ft_txtflag;
++		if (DEBUG_GTE(FLIST, 2)) {
++			rprintf(FINFO, "[DEBUG] make_file: %s (ccsid=%u, txt=%u, ndx=%d)\n",
++				fname, F_ZOS_CCSID(file), F_ZOS_TXTFLAG(file), zos_tags_ndx);
++		}
++	} else if (S_ISREG(st.st_mode)) {
++		if (DEBUG_GTE(FLIST, 2)) {
++			rprintf(FINFO, "[DEBUG] make_file: %s (ndx is 0, preserve_zos_tags=%d)\n",
++				fname, preserve_zos_tags);
++		}
 +	}
 +#endif
  

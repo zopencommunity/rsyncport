@@ -1,0 +1,18 @@
+diff --git a/receiver.c b/receiver.c
+index edfbb21..c14f624 100644
+--- a/receiver.c
++++ b/receiver.c
+@@ -535,6 +535,13 @@ int recv_files(int f_in, int f_out, char *local_name)
+ 	enum logcode log_code = log_before_transfer ? FLOG : FINFO;
+ 	int max_phase = protocol_version >= 29 ? 2 : 1;
+ 	int dflt_perms = (ACCESSPERMS & ~orig_umask);
++
++#ifdef __MVS__
++    if (DEBUG_GTE(RECV, 1)) {
++        rprintf(FINFO, "[DEBUG] recv_files: zos_tags_ndx=%d, preserve_zos_tags=%d\n", zos_tags_ndx, preserve_zos_tags);
++    }
++#endif
++
+ #ifdef SUPPORT_ACLS
+ 	const char *parent_dirname = "";
+ #endif

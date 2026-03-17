@@ -1,5 +1,5 @@
 diff --git a/rsync.c b/rsync.c
-index b130aba..48fd550 100644
+index b130aba..0693116 100644
 --- a/rsync.c
 +++ b/rsync.c
 @@ -27,10 +27,18 @@
@@ -21,7 +21,7 @@ index b130aba..48fd550 100644
  extern int preserve_executability;
  extern int preserve_mtimes;
  extern int omit_dir_times;
-@@ -669,12 +677,50 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+@@ -669,12 +677,40 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
  	}
  #endif
  
@@ -29,6 +29,11 @@ index b130aba..48fd550 100644
 +	if (preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
 +		unsigned short ccsid = F_ZOS_CCSID(file);
 +		unsigned int txtflag = F_ZOS_TXTFLAG(file);
++
++		if (DEBUG_GTE(GENR, 2)) {
++			rprintf(FINFO, "[DEBUG] set_file_attrs: %s (dest_ccsid=%u, source_ccsid=%u, dest_txt=%u, source_txt=%u)\n",
++				fname, sxp->st.st_tag.ft_ccsid, ccsid, sxp->st.st_tag.ft_txtflag, txtflag);
++		}
 +
 +		/* Check if tags need to be updated */
 +		if (ccsid != sxp->st.st_tag.ft_ccsid || txtflag != sxp->st.st_tag.ft_txtflag) {
@@ -54,21 +59,19 @@ index b130aba..48fd550 100644
  			rprintf(FCLIENT, "%s is uptodate\n", fname);
  	}
 +
-+	#ifdef __MVS__
-+	/* Set z/OS file tags if enabled and file is regular */
-+	if (zos_tags_ndx && S_ISREG(new_mode)) {
-+		attrib_t attr;
-+		memset(&attr, 0, sizeof(attr));
-+		attr.att_filetagchg = 1;
-+		attr.att_filetag.ft_ccsid = F_ZOS_CCSID(file);
-+		attr.att_filetag.ft_txtflag = F_ZOS_TXTFLAG(file);
-+
-+		if (__chattr(fname, &attr, sizeof(attr)) != 0) {
-+			rsyserr(FERROR_XFER, errno, "failed to set file tags on %s", full_fname(fname));
-+		}
-+	}
-+	#endif
-+
    cleanup:
  	if (sxp == &sx2)
  		free_stat_x(&sx2);
+@@ -820,6 +856,7 @@ struct file_list *flist_for_ndx(int ndx, const char *fatal_error_loc)
+ 	return NULL;
+ }
+ 
++#ifndef NO_WHO_AM_I
+ const char *who_am_i(void)
+ {
+ 	if (am_starting_up)
+@@ -829,3 +866,4 @@ const char *who_am_i(void)
+ 	     : am_receiver ? "receiver"
+ 	     : "Receiver"; /* pre-forked receiver */
+ }
++#endif

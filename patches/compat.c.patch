@@ -1,5 +1,5 @@
 diff --git a/compat.c b/compat.c
-index 4ce8c6d..ac0d5c8 100644
+index 4ce8c6d..455bbc3 100644
 --- a/compat.c
 +++ b/compat.c
 @@ -87,6 +87,9 @@ int xattr_sum_len = 0;
@@ -12,18 +12,21 @@ index 4ce8c6d..ac0d5c8 100644
  
  int receiver_symlink_times = 0; /* receiver can set the time on a symlink */
  int sender_symlink_iconv = 0;	/* sender should convert symlink content */
-@@ -592,6 +595,10 @@ void setup_protocol(int f_out,int f_in)
+@@ -592,6 +595,13 @@ void setup_protocol(int f_out,int f_in)
  		acls_ndx = ++file_extra_cnt;
  	if (preserve_xattrs)
  		xattrs_ndx = ++file_extra_cnt;
 +#ifdef __MVS__
-+	if (preserve_zos_tags)
++	if (preserve_zos_tags) {
 +		zos_tags_ndx = (file_extra_cnt += 2); /* Need 2 slots: ccsid + txtflag */
++		fprintf(stderr, "DEBUG: [%s] Allocated zos_tags_ndx=%d, file_extra_cnt=%d, preserve_zos_tags=%d\n", 
++			am_server ? "server" : "client", zos_tags_ndx, file_extra_cnt, preserve_zos_tags);
++	}
 +#endif
  
  	if (am_server)
  		set_allow_inc_recurse();
-@@ -726,6 +733,14 @@ void setup_protocol(int f_out,int f_in)
+@@ -726,6 +736,14 @@ void setup_protocol(int f_out,int f_in)
  				compat_flags |= CF_INPLACE_PARTIAL_DIR;
  			if (strchr(client_info, 'u') != NULL)
  				compat_flags |= CF_ID0_NAMES;
@@ -38,7 +41,7 @@ index 4ce8c6d..ac0d5c8 100644
  			if (strchr(client_info, 'v') != NULL) {
  				do_negotiated_strings = 1;
  				compat_flags |= CF_VARINT_FLIST_FLAGS;
-@@ -751,6 +766,41 @@ void setup_protocol(int f_out,int f_in)
+@@ -751,6 +769,42 @@ void setup_protocol(int f_out,int f_in)
  			fprintf(stderr, "Both rsync versions must be at least 3.2.0 for --crtimes.\n");
  			exit_cleanup(RERR_PROTOCOL);
  		}
@@ -59,6 +62,7 @@ index 4ce8c6d..ac0d5c8 100644
 +					preserve_zos_tags = 0;
 +					/* Back out the slots reserved for z/OS tags. */
 +					if (zos_tags_ndx) {
++						fprintf(stderr, "DEBUG: [%s] Disabling z/OS tags (negotiation failed)\n", am_server ? "server" : "client");
 +						file_extra_cnt -= 2;
 +						zos_tags_ndx = 0;
 +					}

@@ -1,8 +1,18 @@
 diff --git a/rsync.h b/rsync.h
-index 479ac48..d99de1f 100644
+index 479ac48..0bb6fb7 100644
 --- a/rsync.h
 +++ b/rsync.h
-@@ -69,8 +69,15 @@
+@@ -1,3 +1,9 @@
++#ifdef __MVS__
++#ifndef _OPEN_SYS_FILE_EXT
++#define _OPEN_SYS_FILE_EXT 1
++#endif
++#endif
++
+ /*
+  * Copyright (C) 1996, 2000 Andrew Tridgell
+  * Copyright (C) 1996 Paul Mackerras
+@@ -69,8 +75,15 @@
  
  /* The following XMIT flags require an rsync that uses a varint for the flag values */
  
@@ -20,7 +30,7 @@ index 479ac48..d99de1f 100644
  
  /* These flags are used in the live flist data. */
  
-@@ -169,6 +176,9 @@
+@@ -169,6 +182,9 @@
  #define IOERR_VANISHED	(1<<1)
  #define IOERR_DEL_LIMIT (1<<2)
  
@@ -30,7 +40,7 @@ index 479ac48..d99de1f 100644
  #define MAX_ARGS 1000
  #define MAX_BASIS_DIRS 20
  #define MAX_SERVER_ARGS (MAX_BASIS_DIRS*2 + 100)
-@@ -317,6 +327,8 @@ enum delret {
+@@ -317,6 +333,8 @@ enum delret {
  #include "config.h"
  
  /* The default RSYNC_RSH is always set in config.h. */
@@ -39,7 +49,7 @@ index 479ac48..d99de1f 100644
  
  #include <stdio.h>
  #ifdef HAVE_SYS_TYPES_H
-@@ -444,6 +456,13 @@ enum delret {
+@@ -444,6 +462,13 @@ enum delret {
  #endif
  #endif
  
@@ -53,7 +63,7 @@ index 479ac48..d99de1f 100644
  /* these are needed for the uid/gid mapping code */
  #include <pwd.h>
  #include <grp.h>
-@@ -459,6 +478,8 @@ enum delret {
+@@ -459,6 +484,8 @@ enum delret {
  #include <sys/file.h>
  #endif
  
@@ -62,7 +72,7 @@ index 479ac48..d99de1f 100644
  #ifdef HAVE_DIRENT_H
  # include <dirent.h>
  #else
-@@ -483,6 +504,13 @@ enum delret {
+@@ -483,6 +510,13 @@ enum delret {
  #include <sys/sysmacros.h>
  #endif
  
@@ -76,7 +86,7 @@ index 479ac48..d99de1f 100644
  #ifdef MAKEDEV_TAKES_3_ARGS
  #define MAKEDEV(devmajor,devminor) makedev(0,devmajor,devminor)
  #else
-@@ -821,6 +849,11 @@ extern int uid_ndx;
+@@ -821,6 +855,11 @@ extern int uid_ndx;
  extern int gid_ndx;
  extern int acls_ndx;
  extern int xattrs_ndx;
@@ -88,7 +98,7 @@ index 479ac48..d99de1f 100644
  extern int file_sum_extra_cnt;
  
  #ifdef USE_FLEXIBLE_ARRAY
-@@ -877,6 +910,10 @@ extern int file_sum_extra_cnt;
+@@ -877,6 +916,10 @@ extern int file_sum_extra_cnt;
  #define F_ACL(f) REQ_EXTRA(f, acls_ndx)->num
  #define F_XATTR(f) REQ_EXTRA(f, xattrs_ndx)->num
  #define F_NDX(f) REQ_EXTRA(f, unsort_ndx)->num
@@ -99,7 +109,7 @@ index 479ac48..d99de1f 100644
  #define F_ATIME(f) REQ_EXTRA64(f, atimes_ndx)->num
  #define F_CRTIME(f) REQ_EXTRA64(f, crtimes_ndx)->num
  
-@@ -1143,6 +1180,10 @@ typedef struct {
+@@ -1143,6 +1186,10 @@ typedef struct {
  #ifdef SUPPORT_XATTRS
      item_list *xattr;
  #endif
@@ -110,7 +120,7 @@ index 479ac48..d99de1f 100644
  } stat_x;
  
  #define ACL_READY(sx) ((sx).acc_acl != NULL)
-@@ -1316,6 +1357,32 @@ extern int errno;
+@@ -1316,6 +1363,32 @@ extern int errno;
  #define S_ISREG(mode) (((mode) & (_S_IFMT)) == (_S_IFREG))
  #endif
  

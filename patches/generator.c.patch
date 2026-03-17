@@ -1,5 +1,5 @@
 diff --git a/generator.c b/generator.c
-index b56fa56..88275e5 100644
+index b56fa56..8bd7239 100644
 --- a/generator.c
 +++ b/generator.c
 @@ -543,6 +543,12 @@ void itemize(const char *fnamecmp, struct file_struct *file, int ndx, int statre
@@ -37,3 +37,16 @@ index b56fa56..88275e5 100644
  		break;
  	  case FT_SYMLINK: {
  #ifdef SUPPORT_LINKS
+@@ -2232,6 +2249,12 @@ void generate_files(int f_out, const char *local_name)
+ 	int save_info_flist = info_levels[INFO_FLIST];
+ 	int save_info_progress = info_levels[INFO_PROGRESS];
+ 
++#ifdef __MVS__
++    if (DEBUG_GTE(GENR, 1)) {
++        rprintf(FINFO, "[DEBUG] generate_files: zos_tags_ndx=%d, preserve_zos_tags=%d\n", zos_tags_ndx, preserve_zos_tags);
++    }
++#endif
++
+ 	if (protocol_version >= 29) {
+ 		itemizing = 1;
+ 		maybe_ATTRS_REPORT = stdout_format_has_i ? 0 : ATTRS_REPORT;
