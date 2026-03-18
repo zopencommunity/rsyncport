@@ -1,0 +1,61 @@
+diff --git a/pipe.c b/pipe.c
+index 3e5f038..300c25e 100644
+--- a/pipe.c
++++ b/pipe.c
+@@ -77,6 +77,13 @@ pid_t piped_child(char **command, int *f_in, int *f_out)
+ 			close(to_child_pipe[0]);
+ 		if (from_child_pipe[1] != STDOUT_FILENO)
+ 			close(from_child_pipe[1]);
++#ifdef __MVS__
++		{
++			struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
++			fcntl(STDIN_FILENO, F_CONTROL_CVT, &cvtreq);
++			fcntl(STDOUT_FILENO, F_CONTROL_CVT, &cvtreq);
++		}
++#endif
+ 		set_blocking(STDIN_FILENO);
+ 		if (blocking_io > 0)
+ 			set_blocking(STDOUT_FILENO);
+@@ -93,6 +100,14 @@ pid_t piped_child(char **command, int *f_in, int *f_out)
+ 	*f_in = from_child_pipe[0];
+ 	*f_out = to_child_pipe[1];
+ 
++#ifdef __MVS__
++  {
++		struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
++		fcntl(*f_in, F_CONTROL_CVT, &cvtreq);
++		fcntl(*f_out, F_CONTROL_CVT, &cvtreq);
++	}
++#endif
++
+ 	return pid;
+ }
+ 
+@@ -160,6 +175,13 @@ pid_t local_child(int argc, char **argv, int *f_in, int *f_out,
+ 			close(to_child_pipe[0]);
+ 		if (from_child_pipe[1] != STDOUT_FILENO)
+ 			close(from_child_pipe[1]);
++#ifdef __MVS__
++		{
++			struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
++			fcntl(STDIN_FILENO, F_CONTROL_CVT, &cvtreq);
++			fcntl(STDOUT_FILENO, F_CONTROL_CVT, &cvtreq);
++		}
++#endif
+ #ifdef ICONV_CONST
+ 		setup_iconv();
+ #endif
+@@ -174,5 +196,13 @@ pid_t local_child(int argc, char **argv, int *f_in, int *f_out,
+ 	*f_in = from_child_pipe[0];
+ 	*f_out = to_child_pipe[1];
+ 
++#ifdef __MVS__
++  {
++		struct f_cnvrt cvtreq = {SETCVTON, 0, 819};
++		fcntl(*f_in, F_CONTROL_CVT, &cvtreq);
++		fcntl(*f_out, F_CONTROL_CVT, &cvtreq);
++	}
++#endif
++
+ 	return pid;
+ }

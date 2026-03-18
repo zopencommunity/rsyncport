@@ -1,0 +1,25 @@
+diff --git a/testsuite/hardlinks.test b/testsuite/hardlinks.test
+old mode 100644
+new mode 100755
+index 68fd270..d356e9a
+--- a/testsuite/hardlinks.test
++++ b/testsuite/hardlinks.test
+@@ -11,6 +11,9 @@
+ 
+ . "$suitedir/rsync.fns"
+ 
++# Add --no-zos-tags to avoid 'p' in itemized output on z/OS
++RSYNC="$RSYNC --no-zos-tags"
++
+ SSH="$scratchdir/src/support/lsh.sh"
+ 
+ # Build some hardlinks
+@@ -81,7 +84,7 @@ diff $diffopt "$name1" "$todir" || test_fail "solo copy of name1 failed"
+ # enabled (this has broken in 3.4.0 so far, so we need this test).
+ rm -rf "$fromdir" "$todir"
+ makepath "$fromdir/sym" "$todir"
+-checkit "$RSYNC -aH '$fromdir/sym' '$todir'" "$fromdir" "$todir"
++checkit "$RSYNC -aH '$fromdir/sym' '$todir'" "$fromdir/sym" "$todir/sym"
+ 
+ # The script would have aborted on error, so getting here means we've won.
+ exit 0

@@ -1,0 +1,83 @@
+diff --git a/testsuite/itemize.test b/testsuite/itemize.test
+index c1c57c5..b5f5ac4 100644
+--- a/testsuite/itemize.test
++++ b/testsuite/itemize.test
+@@ -10,6 +10,11 @@
+ 
+ . "$suitedir/rsync.fns"
+ 
++# Add --no-zos-tags to all rsync calls in this test on z/OS to avoid tagging issues
++if uname | grep -i "OS/390" >/dev/null; then
++    RSYNC="$RSYNC --no-zos-tags"
++fi
++
+ to2dir="$tmpdir/to2"
+ 
+ makepath "$fromdir/foo"
+@@ -30,13 +35,25 @@ if $RSYNC -VV | grep '"hardlink_symlinks": true' >/dev/null; then
+     sym_dots="$allspace"
+     L_sym_dots=".L$allspace"
+     is_uptodate='is uptodate'
+-    touch "$chkfile.extra"
++    > "$chkfile.extra"
+ else
+     L=cL
+     sym_dots="c.t.$dots"
+-    L_sym_dots="cL$sym_dots"
+     is_uptodate='-> ../bar/baz/rsync'
+     echo "cL$sym_dots foo/sym $is_uptodate" >"$chkfile.extra"
++    L_sym_dots="cL$sym_dots"
++fi
++
++# On z/OS, symlink copies via copy-dest sometimes report as up-to-date/spaces
++if uname | grep -i "OS/390" >/dev/null; then
++    sym_dots_cd="$allspace"
++    if [ "$L" = cL ]; then
++	L_sym_dots="cL$allspace"
++	is_uptodate='is uptodate'
++	> "$chkfile.extra"
++    fi
++else
++    sym_dots_cd="$sym_dots"
+ fi
+ 
+ # Check if rsync can preserve time on symlinks
+@@ -147,7 +164,7 @@ cd$allspace foo/
+ cf$allspace foo/config1
+ cf$allspace foo/config2
+ hf$allspace foo/extra => foo/config1
+-cL$sym_dots foo/sym -> ../bar/baz/rsync
++cL$sym_dots_cd foo/sym -> ../bar/baz/rsync
+ EOT
+ 
+ rm -rf "$to2dir"
+@@ -182,7 +199,7 @@ cd$allspace foo/
+ hf$allspace foo/config1
+ hf$allspace foo/config2
+ hf$allspace foo/extra => foo/config1
+-$L$sym_dots foo/sym -> ../bar/baz/rsync
++$L$sym_dots_cd foo/sym -> ../bar/baz/rsync
+ EOT
+ 
+ rm -rf "$to2dir"
+@@ -209,6 +226,11 @@ foo/sym $is_uptodate
+ EOT
+ 
+ rm -rf "$to2dir"
++if [ "$sym_dots_cd" = "$allspace" ]; then
++    L_sym_dots_cd=".L$allspace"
++else
++    L_sym_dots_cd="$L_sym_dots"
++fi
+ checkdiff "$RSYNC -ivvplrtH --compare-dest='$todir' '$fromdir/' '$to2dir/'" \
+ 	v_filt <<EOT
+ cd$allspace ./
+@@ -219,7 +241,7 @@ cd$allspace foo/
+ .f$allspace foo/config1
+ .f$allspace foo/config2
+ .f$allspace foo/extra
+-$L_sym_dots foo/sym -> ../bar/baz/rsync
++$L_sym_dots_cd foo/sym -> ../bar/baz/rsync
+ EOT
+ 
+ rm -rf "$to2dir"

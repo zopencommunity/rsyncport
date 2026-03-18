@@ -1,0 +1,77 @@
+diff --git a/rsync.c b/rsync.c
+index b130aba..0693116 100644
+--- a/rsync.c
++++ b/rsync.c
+@@ -27,10 +27,18 @@
+ #include <langinfo.h>
+ #endif
+ 
++#ifdef __MVS__
++#include <fcntl.h>
++#endif
++
+ extern int dry_run;
+ extern int preserve_acls;
+ extern int preserve_xattrs;
+ extern int preserve_perms;
++#ifdef __MVS__
++extern int preserve_zos_tags;
++extern int zos_tags_ndx;
++#endif
+ extern int preserve_executability;
+ extern int preserve_mtimes;
+ extern int omit_dir_times;
+@@ -669,12 +677,40 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+ 	}
+ #endif
+ 
++#ifdef __MVS__
++	if (preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
++		unsigned short ccsid = F_ZOS_CCSID(file);
++		unsigned int txtflag = F_ZOS_TXTFLAG(file);
++
++		if (DEBUG_GTE(GENR, 2)) {
++			rprintf(FINFO, "[DEBUG] set_file_attrs: %s (dest_ccsid=%u, source_ccsid=%u, dest_txt=%u, source_txt=%u)\n",
++				fname, sxp->st.st_tag.ft_ccsid, ccsid, sxp->st.st_tag.ft_txtflag, txtflag);
++		}
++
++		/* Check if tags need to be updated */
++		if (ccsid != sxp->st.st_tag.ft_ccsid || txtflag != sxp->st.st_tag.ft_txtflag) {
++			attrib_t attr;
++			memset(&attr, 0, sizeof(attr));
++			attr.att_filetagchg = 1;
++			attr.att_filetag.ft_ccsid = ccsid;
++			attr.att_filetag.ft_txtflag = txtflag;
++
++			if (__chattr(fname, &attr, sizeof(attr)) == 0) {
++				updated |= UPDATED_MODE; /* Use existing flag for tracking */
++			} else {
++				rsyserr(FERROR_XFER, errno, "failed to set z/OS tags on %s", full_fname(fname));
++			}
++		}
++	}
++#endif
++
+ 	if (INFO_GTE(NAME, 2) && flags & ATTRS_REPORT) {
+ 		if (updated)
+ 			rprintf(FCLIENT, "%s\n", fname);
+ 		else
+ 			rprintf(FCLIENT, "%s is uptodate\n", fname);
+ 	}
++
+   cleanup:
+ 	if (sxp == &sx2)
+ 		free_stat_x(&sx2);
+@@ -820,6 +856,7 @@ struct file_list *flist_for_ndx(int ndx, const char *fatal_error_loc)
+ 	return NULL;
+ }
+ 
++#ifndef NO_WHO_AM_I
+ const char *who_am_i(void)
+ {
+ 	if (am_starting_up)
+@@ -829,3 +866,4 @@ const char *who_am_i(void)
+ 	     : am_receiver ? "receiver"
+ 	     : "Receiver"; /* pre-forked receiver */
+ }
++#endif

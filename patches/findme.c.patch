@@ -1,0 +1,12 @@
+diff --git a/popt/findme.c b/popt/findme.c
+index 49fc9f6..83b7531 100644
+--- a/popt/findme.c
++++ b/popt/findme.c
+@@ -6,6 +6,7 @@
+    file accompanying popt source distributions, available from 
+    ftp://ftp.rpm.org/pub/rpm/dist. */
+ 
++#include <unistd.h>
+ #include "system.h"
+ #include "findme.h"
+ 

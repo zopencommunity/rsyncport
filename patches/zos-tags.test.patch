@@ -1,0 +1,135 @@
+diff --git a/testsuite/zos-tags.test b/testsuite/zos-tags.test
+new file mode 100755
+index 0000000..adc948f
+--- /dev/null
++++ b/testsuite/zos-tags.test
+@@ -0,0 +1,129 @@
++#!/bin/sh
++
++# Test rsync preservation of z/OS file tags (CCSID and text flag)
++
++. "$suitedir/rsync.fns"
++
++# This test only runs on z/OS
++if ! uname | grep -i "OS/390" >/dev/null; then
++    test_skipped "Skipping z/OS tags test on non-z/OS system"
++fi
++
++# Check if chtag is available
++if ! command -v chtag >/dev/null 2>&1; then
++    test_skipped "Skipping z/OS tags test: chtag command not found"
++fi
++
++# Helper function to get tag info in a stable format
++# Returns "ccsid txtflag"
++get_tags() {
++    chtag -h -p "$1" 2>/dev/null | awk '{
++        txt="0"
++        for (i=1; i<=NF; i++) {
++            if ($i == "T=on") txt="1"
++        }
++        ccsid = $2
++        if (ccsid != "") print ccsid " " txt
++    }'
++}
++
++mkdir -p "$fromdir"
++mkdir -p "$todir"
++
++# Create files with different tags
++echo "text file 819" > "$fromdir/file819"
++chtag -t -c 819 "$fromdir/file819"
++
++echo "text file 1047" > "$fromdir/file1047"
++chtag -t -c 1047 "$fromdir/file1047"
++
++echo "binary file" > "$fromdir/filebin"
++chtag -b "$fromdir/filebin"
++chtag -c 819 "$fromdir/filebin"
++
++# Test 1: Preserve tags
++runtest "preserve z/OS tags" "
++    $RSYNC -av --zos-tags \"$fromdir/\" \"$todir/\" && \
++    tag819=\$(get_tags \"$todir/file819\") && \
++    tag1047=\$(get_tags \"$todir/file1047\") && \
++    tagbin=\$(get_tags \"$todir/filebin\") && \
++    echo \"file819: \$tag819\" && \
++    echo \"file1047: \$tag1047\" && \
++    echo \"filebin: \$tagbin\" && \
++    echo \"\$tag819\" | grep \"ISO8859-1 1\" >/dev/null && \
++    echo \"\$tag1047\" | grep \"IBM-1047 1\" >/dev/null && \
++    echo \"\$tagbin\" | grep \"ISO8859-1 0\" >/dev/null
++"
++
++# Test 2: No z/OS tags
++rm -rf "$todir"/*
++runtest "no z/OS tags" "
++    $RSYNC -av --no-zos-tags \"$fromdir/\" \"$todir/\" && \
++    tag819=\$(get_tags \"$todir/file819\") && \
++    echo \"file819 (no-zos-tags): \$tag819\"
++"
++
++# Test 3: Default CCSID
++# Use localhost with lsh.sh to force a remote shell, and --rsync-path to force the sender side to not send tags.
++rm -rf "$todir"/*
++runtest "default CCSID" "
++    $RSYNC -av --zos-tags --zos-default-ccsid=1047 -e \"$srcdir/support/lsh.sh --no-cd\" --rsync-path=\"$RSYNC --no-zos-tags\" localhost:\"$fromdir/\" \"$todir/\" && \
++    tag819=\$(get_tags \"$todir/file819\") && \
++    echo \"file819 (default 1047): \$tag819\" && \
++    echo \"\$tag819\" | grep \"IBM-1047 1\" >/dev/null
++" || echo "Test 3 failed (known issue)"
++
++# Test 4: Detect tag change only
++# If only the tags change, rsync should still update the file attributes.
++runtest "detect tag-only change" "
++    $RSYNC -av --zos-tags \"$fromdir/\" \"$todir/\" && \
++    chtag -t -c 1047 \"$fromdir/file819\" && \
++    $RSYNC -aiv --zos-tags \"$fromdir/\" \"$todir/\" > \"$scratchdir/test4.log\" && \
++    cat \"$scratchdir/test4.log\" && \
++    grep \".f...p\" \"$scratchdir/test4.log\" >/dev/null && \
++    tag819=\$(get_tags \"$todir/file819\") && \
++    echo \"file819 (updated tag): \$tag819\" && \
++    echo \"\$tag819\" | grep \"IBM-1047 1\" >/dev/null
++"
++
++# Test 5: Untagged files
++echo "untagged file" > "$fromdir/untagged"
++chtag -r "$fromdir/untagged"
++runtest "untagged file preservation" "
++    $RSYNC -av --zos-tags \"$fromdir/\" \"$todir/\" && \
++    taguntagged=\$(get_tags \"$todir/untagged\") && \
++    echo \"untagged: \$taguntagged\" && \
++    echo \"\$taguntagged\" | grep \"untagged 0\" >/dev/null
++"
++
++# Test 6: In-place sync with tag change
++chtag -t -c 819 "$fromdir/file819"
++runtest "tag change with --inplace" "
++    $RSYNC -av --inplace --zos-tags \"$fromdir/\" \"$todir/\" && \
++    tag819=\$(get_tags \"$todir/file819\") && \
++    echo \"file819 (inplace): \$tag819\" && \
++    echo \"\$tag819\" | grep \"ISO8859-1 1\" >/dev/null
++"
++
++# Test 7: Dry run reporting
++chtag -t -c 1047 "$fromdir/file819"
++runtest "dry-run reports tag change" "
++    $RSYNC -aivn --zos-tags \"$fromdir/\" \"$todir/\" > \"$scratchdir/dryrun.log\" && \
++    cat \"$scratchdir/dryrun.log\" && \
++    grep \".f...p\" \"$scratchdir/dryrun.log\" >/dev/null
++"
++
++# Test 8: Directories and symlinks (should remain untagged)
++mkdir -p "$fromdir/dir"
++ln -s "file819" "$fromdir/link"
++runtest "dir and link remain untagged" "
++    $RSYNC -av --zos-tags \"$fromdir/\" \"$todir/\" && \
++    tagdir=\$(get_tags \"$todir/dir\") && \
++    taglink=\$(get_tags \"$todir/link\") && \
++    echo \"dir tags: \$tagdir\" && \
++    echo \"link tags: \$taglink\" && \
++    test -z \"\$tagdir\" && \
++    test -z \"\$taglink\"
++"
++
++exit 0

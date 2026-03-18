@@ -1,0 +1,40 @@
+diff --git a/Makefile.in b/Makefile.in
+index 7c75c26..e418678 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -53,7 +53,11 @@ popt_OBJS=popt/findme.o  popt/popt.o  popt/poptconfig.o \
+ 	popt/popthelp.o popt/poptparse.o popt/poptint.o
+ OBJS=$(OBJS1) $(OBJS2) $(OBJS3) $(DAEMON_OBJ) $(LIBOBJ) @BUILD_ZLIB@ @BUILD_POPT@
+ 
+-TLS_OBJ = tls.o syscall.o util2.o t_stub.o lib/compat.o lib/snprintf.o lib/permstring.o lib/sysxattrs.o @BUILD_POPT@
++rsync_no_who.o: rsync.c $(HEADERS)
++	$(CC) -I. -I$(srcdir) $(CFLAGS) $(CPPFLAGS) -DNO_WHO_AM_I -c -o $@ $(srcdir)/rsync.c
++
++OBJS_NO_WHO = $(subst rsync.o,rsync_no_who.o,$(OBJS))
++TLS_OBJ = tls.o syscall.o util2.o t_stub.o lib/compat.o lib/snprintf.o lib/permstring.o lib/sysxattrs.o $(OBJS_NO_WHO)
+ 
+ # Programs we must have to run the test cases
+ CHECK_PROGS = rsync$(EXEEXT) tls$(EXEEXT) getgroups$(EXEEXT) getfsdev$(EXEEXT) \
+@@ -162,7 +166,7 @@ tls$(EXEEXT): $(TLS_OBJ)
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(TLS_OBJ) $(LIBS)
+ 
+ testrun$(EXEEXT): testrun.o
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ testrun.o
++	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ testrun.o $(LIBS)
+ 
+ getgroups$(EXEEXT): getgroups.o
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ getgroups.o $(LIBS)
+@@ -171,10 +175,10 @@ getfsdev$(EXEEXT): getfsdev.o
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ getfsdev.o $(LIBS)
+ 
+ TRIMSLASH_OBJ = trimslash.o syscall.o util2.o t_stub.o lib/compat.o lib/snprintf.o
+-trimslash$(EXEEXT): $(TRIMSLASH_OBJ)
+-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(TRIMSLASH_OBJ) $(LIBS)
++trimslash$(EXEEXT): $(TRIMSLASH_OBJ) $(OBJS_NO_WHO)
++	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS_NO_WHO) $(TRIMSLASH_OBJ) $(LIBS)
+ 
+-T_UNSAFE_OBJ = t_unsafe.o syscall.o util1.o util2.o t_stub.o lib/compat.o lib/snprintf.o lib/wildmatch.o
++T_UNSAFE_OBJ = t_unsafe.o syscall.o util1.o util2.o t_stub.o lib/compat.o lib/snprintf.o lib/wildmatch.o $(OBJS_NO_WHO)
+ t_unsafe$(EXEEXT): $(T_UNSAFE_OBJ)
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(T_UNSAFE_OBJ) $(LIBS)
+ 

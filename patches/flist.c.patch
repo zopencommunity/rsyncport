@@ -1,0 +1,119 @@
+diff --git a/flist.c b/flist.c
+index 1783253..dc5cc86 100644
+--- a/flist.c
++++ b/flist.c
+@@ -48,6 +48,10 @@ extern int preserve_uid;
+ extern int preserve_gid;
+ extern int preserve_acls;
+ extern int preserve_xattrs;
++#ifdef __MVS__
++extern int preserve_zos_tags;
++extern int zos_default_ccsid;
++#endif
+ extern int preserve_links;
+ extern int preserve_hard_links;
+ extern int preserve_devices;
+@@ -57,6 +61,9 @@ extern int missing_args;
+ extern int eol_nulls;
+ extern int atimes_ndx;
+ extern int crtimes_ndx;
++#ifdef __MVS__
++extern int zos_tags_ndx;
++#endif
+ extern int relative_paths;
+ extern int implied_dirs;
+ extern int ignore_perishable;
+@@ -500,6 +507,11 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
+ 	}
+ #endif
+ 
++#ifdef __MVS__
++	if (preserve_zos_tags && S_ISREG(mode))
++		xflags |= XMIT_ZOS_TAGS;
++#endif
++
+ #ifdef SUPPORT_HARD_LINKS
+ 	if (tmp_dev != -1) {
+ 		if (protocol_version >= 30) {
+@@ -659,6 +671,13 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
+ 	}
+ #endif
+ 
++#ifdef __MVS__
++	if (xflags & XMIT_ZOS_TAGS) {
++		write_varint(f, F_ZOS_CCSID(file));
++		write_varint(f, F_ZOS_TXTFLAG(file));
++	}
++#endif
++
+ 	if (always_checksum && (S_ISREG(mode) || protocol_version < 28)) {
+ 		const char *sum;
+ 		if (S_ISREG(mode))
+@@ -694,6 +713,10 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ 	static uid_t uid;
+ 	static gid_t gid;
+ 	static uint16 gid_flags;
++#ifdef __MVS__
++	static unsigned short zos_ccsid;
++	static unsigned int zos_txtflag;
++#endif
+ 	static char lastname[MAXPATHLEN], *lastdir;
+ 	static int lastdir_depth, lastdir_len = -1;
+ 	static unsigned int del_hier_name_len = 0;
+@@ -946,6 +969,21 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ #endif
+ 		linkname_len = 0;
+ 
++#ifdef __MVS__
++	/* Read z/OS tags if present */
++	if (xflags & XMIT_ZOS_TAGS) {
++		zos_ccsid = read_varint(f);
++		zos_txtflag = read_varint(f);
++		if (preserve_zos_tags && zos_tags_ndx)
++			extra_len += 2 * EXTRA_LEN;
++	} else if (preserve_zos_tags && zos_tags_ndx && S_ISREG(mode)) {
++		/* Linux -> z/OS: default to ISO8859-1 */
++		zos_ccsid = zos_default_ccsid;
++		zos_txtflag = 1;
++		extra_len += 2 * EXTRA_LEN;
++	}
++#endif
++
+ 	if (copy_devices && IS_DEVICE(mode)) {
+ 		/* This is impossible in the official release, but some pre-release patches
+ 		 * didn't convert the device into a file before sending, so we'll do it here
+@@ -1071,6 +1109,12 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ #endif
+ 	if (unsort_ndx)
+ 		F_NDX(file) = flist->used + flist->ndx_start;
++#ifdef __MVS__
++	if (zos_tags_ndx && S_ISREG(mode)) {
++		F_ZOS_CCSID(file) = zos_ccsid;
++		F_ZOS_TXTFLAG(file) = zos_txtflag;
++	}
++#endif
+ 
+ 	if (basename != thisname) {
+ 		file->dirname = lastdir;
+@@ -1482,6 +1526,21 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
+ 	if (crtimes_ndx)
+ 		F_CRTIME(file) = get_create_time(fname, &st);
+ #endif
++#ifdef __MVS__
++	if (zos_tags_ndx && S_ISREG(st.st_mode)) {
++		F_ZOS_CCSID(file) = st.st_tag.ft_ccsid;
++		F_ZOS_TXTFLAG(file) = st.st_tag.ft_txtflag;
++		if (DEBUG_GTE(FLIST, 2)) {
++			rprintf(FINFO, "[DEBUG] make_file: %s (ccsid=%u, txt=%u, ndx=%d)\n",
++				fname, F_ZOS_CCSID(file), F_ZOS_TXTFLAG(file), zos_tags_ndx);
++		}
++	} else if (S_ISREG(st.st_mode)) {
++		if (DEBUG_GTE(FLIST, 2)) {
++			rprintf(FINFO, "[DEBUG] make_file: %s (ndx is 0, preserve_zos_tags=%d)\n",
++				fname, preserve_zos_tags);
++		}
++	}
++#endif
+ 
+ 	if (basename != thisname)
+ 		file->dirname = lastdir;

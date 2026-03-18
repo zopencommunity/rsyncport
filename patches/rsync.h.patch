@@ -1,0 +1,155 @@
+diff --git a/rsync.h b/rsync.h
+index 479ac48..0bb6fb7 100644
+--- a/rsync.h
++++ b/rsync.h
+@@ -1,3 +1,9 @@
++#ifdef __MVS__
++#ifndef _OPEN_SYS_FILE_EXT
++#define _OPEN_SYS_FILE_EXT 1
++#endif
++#endif
++
+ /*
+  * Copyright (C) 1996, 2000 Andrew Tridgell
+  * Copyright (C) 1996 Paul Mackerras
+@@ -69,8 +75,15 @@
+ 
+ /* The following XMIT flags require an rsync that uses a varint for the flag values */
+ 
+-#define XMIT_RESERVED_16 (1<<16) 	/* reserved for future fileflags use */
+-#define XMIT_CRTIME_EQ_MTIME (1<<17)	/* any protocol - restricted by command-line option */
++#define XMIT_RESERVED_16 (1<<16)       /* reserved for future fileflags use */
++
++#define XMIT_CRTIME_EQ_MTIME (1<<17)   /* any protocol - restricted by command-line option */
++
++#define XMIT_ZOS_TAGS (1<<18)          /* z/OS file tag attributes (CCSID, txtflag) */
++
++
++
++#define PROTOCOL_ZOS_TAGS (1<<30)      /* Capability flag for z/OS tags in protocol version */
+ 
+ /* These flags are used in the live flist data. */
+ 
+@@ -169,6 +182,9 @@
+ #define IOERR_VANISHED	(1<<1)
+ #define IOERR_DEL_LIMIT (1<<2)
+ 
++#define CF_ID0_NAMES (1<<8)
++#define CF_ZOS_TAGS  (1<<29)    /* z/OS file tag support negotiation */
++
+ #define MAX_ARGS 1000
+ #define MAX_BASIS_DIRS 20
+ #define MAX_SERVER_ARGS (MAX_BASIS_DIRS*2 + 100)
+@@ -317,6 +333,8 @@ enum delret {
+ #include "config.h"
+ 
+ /* The default RSYNC_RSH is always set in config.h. */
++# include <sys/stat.h>
++#include <dirent.h>
+ 
+ #include <stdio.h>
+ #ifdef HAVE_SYS_TYPES_H
+@@ -444,6 +462,13 @@ enum delret {
+ #endif
+ #endif
+ 
++#ifdef HAVE_SYS_MODES_H
++/* apparently z/OS needs this for S_ISLNK */
++#ifndef S_ISLNK
++#include <sys/modes.h>
++#endif
++#endif
++
+ /* these are needed for the uid/gid mapping code */
+ #include <pwd.h>
+ #include <grp.h>
+@@ -459,6 +484,8 @@ enum delret {
+ #include <sys/file.h>
+ #endif
+ 
++#define HAVE_DIRENT_H 1
++
+ #ifdef HAVE_DIRENT_H
+ # include <dirent.h>
+ #else
+@@ -483,6 +510,13 @@ enum delret {
+ #include <sys/sysmacros.h>
+ #endif
+ 
++#ifdef __MVS__
++  /* z/OS has no 'makedev' so create trivial services */
++  #define makedev(devmajor,devminor) ((dev_t)((devmajor) << 24 | (devminor)))
++  #define minor(dev)                 ((dev) & 0xFFFFFF)
++  #define major(dev)                 (((uint32)(dev)) >> 24)
++#endif
++
+ #ifdef MAKEDEV_TAKES_3_ARGS
+ #define MAKEDEV(devmajor,devminor) makedev(0,devmajor,devminor)
+ #else
+@@ -821,6 +855,11 @@ extern int uid_ndx;
+ extern int gid_ndx;
+ extern int acls_ndx;
+ extern int xattrs_ndx;
++#ifdef __MVS__
++extern int zos_tags_ndx;
++extern int preserve_zos_tags;
++extern int zos_default_ccsid;
++#endif
+ extern int file_sum_extra_cnt;
+ 
+ #ifdef USE_FLEXIBLE_ARRAY
+@@ -877,6 +916,10 @@ extern int file_sum_extra_cnt;
+ #define F_ACL(f) REQ_EXTRA(f, acls_ndx)->num
+ #define F_XATTR(f) REQ_EXTRA(f, xattrs_ndx)->num
+ #define F_NDX(f) REQ_EXTRA(f, unsort_ndx)->num
++#ifdef __MVS__
++#define F_ZOS_CCSID(f) REQ_EXTRA(f, zos_tags_ndx)->unum
++#define F_ZOS_TXTFLAG(f) REQ_EXTRA(f, zos_tags_ndx + 1)->unum
++#endif
+ #define F_ATIME(f) REQ_EXTRA64(f, atimes_ndx)->num
+ #define F_CRTIME(f) REQ_EXTRA64(f, crtimes_ndx)->num
+ 
+@@ -1143,6 +1186,10 @@ typedef struct {
+ #ifdef SUPPORT_XATTRS
+     item_list *xattr;
+ #endif
++#ifdef __MVS__
++    unsigned short zos_ccsid;   /* z/OS Coded Character Set ID */
++    unsigned int zos_txtflag;   /* z/OS text flag */
++#endif
+ } stat_x;
+ 
+ #define ACL_READY(sx) ((sx).acc_acl != NULL)
+@@ -1316,6 +1363,32 @@ extern int errno;
+ #define S_ISREG(mode) (((mode) & (_S_IFMT)) == (_S_IFREG))
+ #endif
+ 
++#ifdef __MVS__
++/* z/OS mode conversion functions */
++mode_t to_linux_mode(unsigned int inmode);
++unsigned int to_zos_mode(mode_t inmode);
++
++/*
++ * On z/OS, our do_stat/do_lstat/do_fstat functions convert st_mode to Linux format.
++ * Therefore, we need to redefine the S_IS* macros to work with Linux-format modes.
++ */
++#undef S_IFMT
++#undef S_IFREG
++#undef S_IFDIR
++#undef S_IFLNK
++#undef S_ISREG
++#undef S_ISDIR
++#undef S_ISLNK
++
++#define S_IFMT   0170000
++#define S_IFREG  0100000
++#define S_IFDIR  0040000
++#define S_IFLNK  0120000
++#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)
++#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)
++#define S_ISLNK(m)  (((m) & S_IFMT) == S_IFLNK)
++#endif
++
+ /* work out what fcntl flag to use for non-blocking */
+ #ifdef O_NONBLOCK
+ # define NONBLOCK_FLAG O_NONBLOCK

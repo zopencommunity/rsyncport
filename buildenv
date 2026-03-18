@@ -37,7 +37,7 @@ zopen_terminate()
   deactivate
 }
 
-export ZOPEN_EXTRA_CONFIGURE_OPTS='--with-included-zlib=no'
+export ZOPEN_EXTRA_CONFIGURE_OPTS='--with-included-zlib=no --disable-md2man'
 export ZOPEN_EXTRA_LIBS="-lxxhash -lssl -lzstd -llz4 -lcrypto -lz"
 export ZOPEN_EXTRA_CPPFLAGS="-I\${RSYNC_INC} -I\${ZOPEN_ROOT}/patches/PR3 -I\${OPENSSL_HOME}/include -I\${XXHASH_HOME}/include -I\${ZSTD_HOME}/include -I\${LZ4_HOME}/include -I\${ZLIB_HOME}/include"
 export ZOPEN_EXTRA_LDFLAGS="-L\${OPENSSL_HOME}/lib -L\${XXHASH_HOME}/lib -L\${ZSTD_HOME}/lib  -L\${LZ4_HOME}/lib -L\${ZLIB_HOME}/lib"
@@ -56,7 +56,7 @@ zopen_check_results()
 chk="$1/$2_check.log"
 
 failures=$(grep 'overall result is' ${chk} | awk ' { print $4; }')
-expectedFailures=4
+expectedFailures=0
 totalTests=35
 
 echo "actualFailures:${failures}"

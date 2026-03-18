@@ -1,0 +1,11 @@
+diff --git a/mkproto.awk b/mkproto.awk
+index bd2e927..49e4309 100644
+--- a/mkproto.awk
++++ b/mkproto.awk
+@@ -36,5 +36,5 @@ inheader {
+ 
+ END {
+     if (old_protos != protos) print protos > "proto.h"
+-    system("touch proto.h-tstamp")
++    system("touch proto.h-tstamp && chtag -tcISO8859-1 proto.h-tstamp")
+ }
