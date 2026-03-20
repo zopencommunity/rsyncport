@@ -11,7 +11,7 @@ index 7c75c26..e418678 100644
 +	$(CC) -I. -I$(srcdir) $(CFLAGS) $(CPPFLAGS) -DNO_WHO_AM_I -c -o $@ $(srcdir)/rsync.c
 +
 +OBJS_NO_WHO = $(subst rsync.o,rsync_no_who.o,$(OBJS))
-+TLS_OBJ = tls.o syscall.o util2.o t_stub.o lib/compat.o lib/snprintf.o lib/permstring.o lib/sysxattrs.o $(OBJS_NO_WHO)
++TLS_OBJ = tls.o t_stub.o $(OBJS_NO_WHO)
  
  # Programs we must have to run the test cases
  CHECK_PROGS = rsync$(EXEEXT) tls$(EXEEXT) getgroups$(EXEEXT) getfsdev$(EXEEXT) \
