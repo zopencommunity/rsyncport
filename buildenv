@@ -1,4 +1,4 @@
-# bump: rsync-version /RSYNC_VERSION="(.*)"/ https://github.com/RsyncProject/rsync|semver:*
+# bump: rsync-version /RSYNC_VERSION="(.*)"/ https://rsync.samba.org/ftp/rsync/|re:/href="rsync-([\d.]+)\.tar/|semver:*
 RSYNC_VERSION="3.4.1"
 
 export ZOPEN_BUILD_LINE="STABLE"
