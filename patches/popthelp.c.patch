@@ -1,0 +1,12 @@
+diff --git a/popt/popthelp.c b/popt/popthelp.c
+index 6738f6a..5566d7f 100644
+--- a/popt/popthelp.c
++++ b/popt/popthelp.c
+@@ -9,6 +9,7 @@
+    ftp://ftp.rpm.org/pub/rpm/dist. */
+ 
+ #include "system.h"
++#include "config.h"
+ 
+ #define        POPT_USE_TIOCGWINSZ
+ #ifdef POPT_USE_TIOCGWINSZ

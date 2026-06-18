@@ -1,0 +1,26 @@
+diff --git a/popt/popt.c b/popt/popt.c
+index f3f26a3..9624797 100644
+--- a/popt/popt.c
++++ b/popt/popt.c
+@@ -34,7 +34,7 @@ int _popt_debug = 0;
+ unsigned int _poptArgMask = POPT_ARG_MASK;
+ unsigned int _poptGroupMask = POPT_GROUP_MASK;
+ 
+-#if !defined(HAVE_STRERROR)
++#if !defined(HAVE_STRERROR) && !defined(ZOSLIB_OVERRIDE_CLIB)
+ static char * strerror(int errno)
+ {
+     extern int sys_nerr;
+diff --git a/popt/system.h b/popt/system.h
+index f731d20..f23c684 100644
+--- a/popt/system.h
++++ b/popt/system.h
+@@ -27,7 +27,7 @@ void * xrealloc (void * ptr, size_t size);
+ 
+ char * xstrdup (const char *str);
+ 
+-#if !defined(HAVE_STPCPY)
++#if !defined(HAVE_STPCPY) && !defined(ZOSLIB_OVERRIDE_CLIB)
+ /* Copy SRC to DEST, returning the address of the terminating '\0' in DEST.  */
+ static inline char * stpcpy (char *dest, const char * src) {
+     register char *d = dest;
