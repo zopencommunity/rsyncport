@@ -1,19 +1,12 @@
 diff --git a/util1.c b/util1.c
-index 7a1f24b..fa1a0a8 100644
+index 7a1f24b..c02313f 100644
 --- a/util1.c
 +++ b/util1.c
-@@ -20,6 +20,15 @@
+@@ -20,6 +20,8 @@
   * with this program; if not, visit the http://fsf.org website.
   */
  
-+#ifdef __MVS__
-+#ifndef O_NOFOLLOW
-+#define O_NOFOLLOW 0
-+#endif
-+#ifndef O_DIRECTORY
-+#define O_DIRECTORY 0
-+#endif
-+#endif
++#define __XPLAT 1
 +
  #include "rsync.h"
  #include "ifuncs.h"
