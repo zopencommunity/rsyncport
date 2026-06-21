@@ -1,8 +1,8 @@
 diff --git a/syscall.c b/syscall.c
-index 34a9bba..f10441f 100644
+index 34a9bba..7b0896a 100644
 --- a/syscall.c
 +++ b/syscall.c
-@@ -81,6 +81,77 @@ struct create_time {
+@@ -81,6 +81,79 @@ struct create_time {
  
  #define RETURN_ERROR_IF_RO_OR_LO RETURN_ERROR_IF(read_only || list_only, EROFS)
  
@@ -14,7 +14,9 @@ index 34a9bba..f10441f 100644
 +#  define LINUX_S_IFBLK	      0060000   /* [XSI] block special */
 +#  define LINUX_S_IFREG	      0100000   /* [XSI] regular */
 +#  define LINUX_S_IFLNK	      0120000   /* [XSI] symbolic link */
-+#  define LINUX_S_IFSOCK      0140000   /* [XSI] socket */
++#  define LINUX_S_IFSOCK      0140000   /* socket */
++
++#  define LINUX_S_IFMT        0170000	/* [XSI] mask */
 +
 +#  define ZOS_S_IFIFO       0x04000000	/* named pipe (fifo) */
 +#  define ZOS_S_IFCHR       0x02000000	/* character special */
@@ -61,13 +63,13 @@ index 34a9bba..f10441f 100644
 +{
 +  unsigned int outmode = (unsigned int) (inmode & 07777);
 +
-+  if (inmode & LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
-+  if (inmode & LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
-+  if (inmode & LINUX_S_IFDIR) { outmode |= ZOS_S_IFDIR; }
-+  if (inmode & LINUX_S_IFBLK) { outmode |= ZOS_S_IFBLK; }
-+  if (inmode & LINUX_S_IFREG) { outmode |= ZOS_S_IFREG; }
-+  if (inmode & LINUX_S_IFLNK) { outmode |= ZOS_S_IFLNK; }
-+  if (inmode & LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFIFO) { outmode |= ZOS_S_IFIFO; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFCHR) { outmode |= ZOS_S_IFCHR; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFDIR) { outmode |= ZOS_S_IFDIR; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFBLK) { outmode |= ZOS_S_IFBLK; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFREG) { outmode |= ZOS_S_IFREG; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFLNK) { outmode |= ZOS_S_IFLNK; }
++  if ((inmode & LINUX_S_IFMT) == LINUX_S_IFSOCK) { outmode |= ZOS_S_IFSOCK; }
 +
 +  return outmode;
 +}
@@ -80,7 +82,7 @@ index 34a9bba..f10441f 100644
  int do_unlink(const char *path)
  {
  	if (dry_run) return 0;
-@@ -102,6 +173,9 @@ int do_symlink(const char *lnk, const char *path)
+@@ -102,6 +175,9 @@ int do_symlink(const char *lnk, const char *path)
  		int fd = open(path, O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR);
  		if (fd < 0)
  			return -1;
@@ -90,7 +92,7 @@ index 34a9bba..f10441f 100644
  		ok = write(fd, lnk, len) == len;
  		if (close(fd) < 0)
  			ok = 0;
-@@ -167,15 +241,20 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
+@@ -167,15 +243,20 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
  
  	/* For --fake-super, we create a normal file with mode 0600. */
  	if (am_root < 0) {
@@ -114,7 +116,7 @@ index 34a9bba..f10441f 100644
  #endif
  #if !defined MKNOD_CREATES_SOCKETS && defined HAVE_SYS_UN_H
  	if (S_ISSOCK(mode)) {
-@@ -204,7 +283,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
+@@ -204,7 +285,7 @@ int do_mknod(const char *pathname, mode_t mode, dev_t dev)
  	}
  #endif
  #ifdef HAVE_MKNOD
@@ -123,7 +125,7 @@ index 34a9bba..f10441f 100644
  #else
  	return -1;
  #endif
-@@ -219,6 +298,7 @@ int do_rmdir(const char *pathname)
+@@ -219,6 +300,7 @@ int do_rmdir(const char *pathname)
  
  int do_open(const char *pathname, int flags, mode_t mode)
  {
@@ -131,7 +133,7 @@ index 34a9bba..f10441f 100644
  	if (flags != O_RDONLY) {
  		RETURN_ERROR_IF(dry_run, 0);
  		RETURN_ERROR_IF_RO_OR_LO;
-@@ -229,7 +309,16 @@ int do_open(const char *pathname, int flags, mode_t mode)
+@@ -229,7 +311,16 @@ int do_open(const char *pathname, int flags, mode_t mode)
  		flags |= O_NOATIME;
  #endif
  
@@ -149,7 +151,7 @@ index 34a9bba..f10441f 100644
  }
  
  #ifdef HAVE_CHMOD
-@@ -244,7 +333,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -244,7 +335,7 @@ int do_chmod(const char *path, mode_t mode)
  	switch (switch_step) {
  #ifdef HAVE_LCHMOD
  	case 0:
@@ -158,7 +160,7 @@ index 34a9bba..f10441f 100644
  			break;
  		if (errno == ENOSYS)
  			switch_step++;
-@@ -256,7 +345,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -256,7 +347,7 @@ int do_chmod(const char *path, mode_t mode)
  		if (S_ISLNK(mode)) {
  # if defined HAVE_SETATTRLIST
  			struct attrlist attrList;
@@ -167,7 +169,7 @@ index 34a9bba..f10441f 100644
  
  			memset(&attrList, 0, sizeof attrList);
  			attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
-@@ -269,7 +358,7 @@ int do_chmod(const char *path, mode_t mode)
+@@ -269,7 +360,7 @@ int do_chmod(const char *path, mode_t mode)
  			code = 1;
  # endif
  		} else
@@ -176,7 +178,7 @@ index 34a9bba..f10441f 100644
  		break;
  	}
  	if (code != 0 && (preserve_perms || preserve_executability))
-@@ -324,7 +413,7 @@ int do_mkdir(char *path, mode_t mode)
+@@ -324,7 +415,7 @@ int do_mkdir(char *path, mode_t mode)
  	if (dry_run) return 0;
  	RETURN_ERROR_IF_RO_OR_LO;
  	trim_trailing_slashes(path);
@@ -185,7 +187,7 @@ index 34a9bba..f10441f 100644
  }
  
  /* like mkstemp but forces permissions */
-@@ -339,7 +428,7 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -339,7 +430,7 @@ int do_mkstemp(char *template, mode_t perms)
  		int fd = mkstemp(template);
  		if (fd == -1)
  			return -1;
@@ -194,7 +196,7 @@ index 34a9bba..f10441f 100644
  			int errno_save = errno;
  			close(fd);
  			unlink(template);
-@@ -347,7 +436,10 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -347,7 +438,10 @@ int do_mkstemp(char *template, mode_t perms)
  			return -1;
  		}
  #if defined HAVE_SETMODE && O_BINARY
@@ -206,7 +208,7 @@ index 34a9bba..f10441f 100644
  #endif
  		return fd;
  	}
-@@ -358,6 +450,35 @@ int do_mkstemp(char *template, mode_t perms)
+@@ -358,6 +452,35 @@ int do_mkstemp(char *template, mode_t perms)
  #endif
  }
  
@@ -242,7 +244,7 @@ index 34a9bba..f10441f 100644
  int do_stat(const char *path, STRUCT_STAT *st)
  {
  #ifdef USE_STAT64_FUNCS
-@@ -389,6 +510,8 @@ int do_fstat(int fd, STRUCT_STAT *st)
+@@ -389,6 +512,8 @@ int do_fstat(int fd, STRUCT_STAT *st)
  #endif
  }
  
@@ -251,7 +253,7 @@ index 34a9bba..f10441f 100644
  OFF_T do_lseek(int fd, OFF_T offset, int whence)
  {
  #ifdef HAVE_LSEEK64
-@@ -709,6 +832,14 @@ int do_open_nofollow(const char *pathname, int flags)
+@@ -709,6 +834,14 @@ int do_open_nofollow(const char *pathname, int flags)
  	}
  #endif
  
@@ -266,7 +268,7 @@ index 34a9bba..f10441f 100644
  	return fd;
  }
  
-@@ -737,11 +868,21 @@ int secure_relative_open(const char *basedir, const char *relpath, int flags, mo
+@@ -737,11 +870,21 @@ int secure_relative_open(const char *basedir, const char *relpath, int flags, mo
  #if !defined(O_NOFOLLOW) || !defined(O_DIRECTORY) || !defined(AT_FDCWD)
  	// really old system, all we can do is live with the risks
  	if (!basedir) {
@@ -290,7 +292,7 @@ index 34a9bba..f10441f 100644
  #else
  	int dirfd = AT_FDCWD;
  	if (basedir != NULL) {
-@@ -770,6 +911,9 @@ int secure_relative_open(const char *basedir, const char *relpath, int flags, mo
+@@ -770,6 +913,9 @@ int secure_relative_open(const char *basedir, const char *relpath, int flags, mo
  			}
  			// this could be the last component of the path, try as a file
  			retfd = openat(dirfd, part, flags | O_NOFOLLOW, mode);

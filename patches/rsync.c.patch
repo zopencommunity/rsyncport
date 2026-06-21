@@ -43,7 +43,7 @@ index b130aba..0693116 100644
 +			attr.att_filetag.ft_ccsid = ccsid;
 +			attr.att_filetag.ft_txtflag = txtflag;
 +
-+			if (__chattr(fname, &attr, sizeof(attr)) == 0) {
++			if (__chattr((char *)fname, &attr, sizeof(attr)) == 0) {
 +				updated |= UPDATED_MODE; /* Use existing flag for tracking */
 +			} else {
 +				rsyserr(FERROR_XFER, errno, "failed to set z/OS tags on %s", full_fname(fname));
