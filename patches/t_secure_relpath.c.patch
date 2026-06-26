@@ -1,0 +1,17 @@
+diff --git a/t_secure_relpath.c b/t_secure_relpath.c
+index a0fdf0d..975af0c 100644
+--- a/t_secure_relpath.c
++++ b/t_secure_relpath.c
+@@ -26,6 +26,12 @@
+ 
+ #include "rsync.h"
+ 
++#ifdef __MVS__
++#ifndef O_DIRECTORY
++#define O_DIRECTORY 0
++#endif
++#endif
++
+ #include <sys/stat.h>
+ 
+ int dry_run = 0;
