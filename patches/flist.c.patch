@@ -1,5 +1,5 @@
 diff --git a/flist.c b/flist.c
-index 346540f..a4c0b4e 100644
+index 346540f..91e106c 100644
 --- a/flist.c
 +++ b/flist.c
 @@ -48,6 +48,10 @@ extern int preserve_uid;
@@ -95,7 +95,7 @@ index 346540f..a4c0b4e 100644
  
  	if (basename != thisname) {
  		file->dirname = lastdir;
-@@ -1518,6 +1562,22 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
+@@ -1518,6 +1562,28 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
  	if (crtimes_ndx)
  		F_CRTIME(file) = get_create_time(fname, &st);
  #endif
@@ -103,6 +103,12 @@ index 346540f..a4c0b4e 100644
 +	if (zos_tags_ndx && S_ISREG(st.st_mode)) {
 +		F_ZOS_CCSID(file) = st.st_tag.ft_ccsid;
 +		F_ZOS_TXTFLAG(file) = st.st_tag.ft_txtflag;
++
++		/* Apply default CCSID if file is untagged and default is set */
++		if (!am_sender && F_ZOS_CCSID(file) == 0 && zos_default_ccsid != 0) {
++			F_ZOS_CCSID(file) = zos_default_ccsid;
++			F_ZOS_TXTFLAG(file) = 1; /* Mark as text */
++		}
 +		
 +		if (DEBUG_GTE(FLIST, 2)) {
 +			rprintf(FINFO, "[DEBUG] make_file: %s (ccsid=%u, txt=%u, ndx=%d)\n",
