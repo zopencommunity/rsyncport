@@ -1,5 +1,5 @@
 diff --git a/compat.c b/compat.c
-index d1ca316..28a5b78 100644
+index d1ca316..83bd83d 100644
 --- a/compat.c
 +++ b/compat.c
 @@ -88,6 +88,9 @@ int xattr_sum_len = 0;
@@ -43,7 +43,7 @@ index d1ca316..28a5b78 100644
  			if (strchr(client_info, 'v') != NULL) {
  				do_negotiated_strings = 1;
  				compat_flags |= CF_VARINT_FLIST_FLAGS;
-@@ -752,6 +772,44 @@ void setup_protocol(int f_out,int f_in)
+@@ -752,6 +772,60 @@ void setup_protocol(int f_out,int f_in)
  			fprintf(stderr, "Both rsync versions must be at least 3.2.0 for --crtimes.\n");
  			exit_cleanup(RERR_PROTOCOL);
  		}
@@ -53,25 +53,41 @@ index d1ca316..28a5b78 100644
 +		 * Check negotiated flags for z/OS tag support.
 +		 * This MUST be done after compat_flags are exchanged.
 +		 * If auto-detect (2) or explicit (1) but remote didn't confirm,
-+		 * disable tags and clean up slots.
++		 * keep tags enabled on receiver to apply default CCSID.
 +		 */
 +		if (protocol_version >= 30) {
 +			if (compat_flags & CF_ZOS_TAGS) {
 +				if (preserve_zos_tags == 2)
 +					preserve_zos_tags = 1;
 +			} else {
++				/* Remote doesn't support z/OS tags */
 +				if (preserve_zos_tags == 2) {
-+					preserve_zos_tags = 0;
-+					/* Back out the slots reserved for z/OS tags. */
-+					if (zos_tags_ndx) {
++					/* Auto-detect: keep enabled on receiver for default CCSID */
++					if (!am_sender) {
++						preserve_zos_tags = 1;
 +						if (DEBUG_GTE(PROTO, 1)) {
-+							rprintf(FINFO, "[%s] Disabling z/OS tags (negotiation failed)\n", am_server ? "server" : "client");
++							rprintf(FINFO, "[%s] Keeping z/OS tags enabled for receiver (sender doesn't support tags)\n", am_server ? "server" : "client");
 +						}
-+						file_extra_cnt -= 2;
-+						zos_tags_ndx = 0;
++					} else {
++						/* Sender side: disable if remote doesn't support */
++						preserve_zos_tags = 0;
++						if (zos_tags_ndx) {
++							if (DEBUG_GTE(PROTO, 1)) {
++								rprintf(FINFO, "[%s] Disabling z/OS tags on sender (receiver doesn't support tags)\n", am_server ? "server" : "client");
++							}
++							file_extra_cnt -= 2;
++							zos_tags_ndx = 0;
++						}
 +					}
 +				} else if (preserve_zos_tags == 1) {
-+					rprintf(FWARNING, "Remote does not support z/OS tags. Remote tags will not be preserved.\n");
++					/* Explicit --zos-tags: keep enabled on receiver */
++					if (!am_sender) {
++						if (DEBUG_GTE(PROTO, 1)) {
++							rprintf(FINFO, "[%s] Keeping z/OS tags enabled for receiver (sender doesn't support tags)\n", am_server ? "server" : "client");
++						}
++					} else {
++						rprintf(FWARNING, "Remote does not support z/OS tags. Remote tags will not be preserved.\n");
++					}
 +				}
 +			}
 +		} else {
