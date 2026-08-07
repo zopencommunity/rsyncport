@@ -1,8 +1,172 @@
 diff --git a/receiver.c b/receiver.c
-index edfbb21..c14f624 100644
+index 30855e1..d493593 100644
 --- a/receiver.c
 +++ b/receiver.c
-@@ -535,6 +535,13 @@ int recv_files(int f_in, int f_out, char *local_name)
+@@ -71,6 +71,11 @@ extern int fuzzy_basis;
+ extern struct name_num_item *xfer_sum_nni;
+ extern int xfer_sum_len;
+ extern int use_secure_symlinks;
++#ifdef __MVS__
++extern int preserve_zos_tags;
++extern int zos_tags_ndx;
++extern int zos_default_ccsid;
++#endif
+ 
+ static struct bitbag *delayed_bits = NULL;
+ static int phase = 0, redoing = 0;
+@@ -78,6 +83,83 @@ static flist_ndx_list batch_redo_list;
+ /* This is non-0 when we are updating the basis file or an identical copy: */
+ static int updating_basis_or_equiv;
+ 
++#ifdef __MVS__
++#ifdef ICONV_CONST
++/* iconv handle for z/OS CCSID conversion */
++static iconv_t ic_zos_convert = (iconv_t)-1;
++static int zos_source_ccsid = 819; /* ASCII by default */
++static int zos_target_ccsid = 0;
++
++/* Convert data from source CCSID to target CCSID for z/OS */
++static char *convert_zos_ccsid(const char *data, int len, int *out_len, int target_ccsid)
++{
++	char *converted_buf = NULL;
++	size_t inleft, outleft, converted_len;
++	char *inbuf, *outbuf;
++	char ccsid_from[32], ccsid_to[32];
++	
++	if (target_ccsid == 0 || target_ccsid == 819 || target_ccsid == 1208) {
++		/* No conversion needed for ASCII or UTF-8 (compatible with ASCII) */
++		*out_len = len;
++		return (char *)data;
++	}
++	
++	/* Setup iconv for CCSID conversion - use proper charset names */
++	if (zos_source_ccsid == 819) {
++		snprintf(ccsid_from, sizeof(ccsid_from), "ISO8859-1");
++	} else {
++		snprintf(ccsid_from, sizeof(ccsid_from), "IBM-%d", zos_source_ccsid);
++	}
++	
++	if (target_ccsid == 819) {
++		snprintf(ccsid_to, sizeof(ccsid_to), "ISO8859-1");
++	} else {
++		snprintf(ccsid_to, sizeof(ccsid_to), "IBM-%d", target_ccsid);
++	}
++	
++	if (ic_zos_convert == (iconv_t)-1 || zos_target_ccsid != target_ccsid) {
++		if (ic_zos_convert != (iconv_t)-1)
++			iconv_close(ic_zos_convert);
++		
++		ic_zos_convert = iconv_open(ccsid_to, ccsid_from);
++		if (ic_zos_convert == (iconv_t)-1) {
++			rprintf(FERROR, "iconv_open(\"%s\", \"%s\") failed for z/OS CCSID conversion: %s\n",
++				ccsid_to, ccsid_from, strerror(errno));
++			*out_len = len;
++			return (char *)data;
++		}
++		zos_target_ccsid = target_ccsid;
++	}
++	
++	/* Allocate buffer for converted data (worst case: 4x expansion for multibyte) */
++	converted_len = len * 4;
++	converted_buf = new_array(char, converted_len);
++	
++	inbuf = (char *)data;
++	outbuf = converted_buf;
++	inleft = len;
++	outleft = converted_len;
++	
++	/* Reset conversion state */
++	iconv(ic_zos_convert, NULL, 0, NULL, 0);
++	
++	/* Perform conversion */
++	if (iconv(ic_zos_convert, &inbuf, &inleft, &outbuf, &outleft) == (size_t)-1) {
++		if (errno != E2BIG) {
++			rprintf(FERROR, "iconv conversion failed for z/OS CCSID %d: %s\n",
++				target_ccsid, strerror(errno));
++			free(converted_buf);
++			*out_len = len;
++			return (char *)data;
++		}
++	}
++	
++	*out_len = converted_len - outleft;
++	return converted_buf;
++}
++#endif
++#endif
++
+ #define TMPNAME_SUFFIX ".XXXXXX"
+ #define TMPNAME_SUFFIX_LEN ((int)sizeof TMPNAME_SUFFIX - 1)
+ #define MAX_UNIQUE_NUMBER 999999
+@@ -404,9 +486,67 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 
+ 			sum_update(data, i);
+ 
++#ifdef __MVS__
++#ifdef ICONV_CONST
++
++			/* Convert data for z/OS CCSID if needed */
++
++			if (fd != -1 && preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
++
++				int target_ccsid = F_ZOS_CCSID(file);
++
++				int converted_len = i;
++
++				char *write_data = (char *)data;
++
++				char *converted_data = NULL;
++
++				
++
++				if (target_ccsid != 0 && target_ccsid != 819 && target_ccsid != 1208) {
++
++					converted_data = convert_zos_ccsid(data, i, &converted_len, target_ccsid);
++
++					if (converted_data != data) {
++
++						write_data = converted_data;
++
++					}
++
++				}
++
++				
++
++				if (write_file(fd, 0, offset, write_data, converted_len) != converted_len) {
++
++					if (converted_data && converted_data != data)
++
++						free(converted_data);
++
++					goto report_write_error;
++
++				}
++
++				
++
++				if (converted_data && converted_data != data)
++
++					free(converted_data);
++
++				
++
++				offset += converted_len;
++
++			} else
++#endif
++#endif
++
++			{
+ 			if (fd != -1 && write_file(fd, 0, offset, data, i) != i)
+ 				goto report_write_error;
+ 			offset += i;
++
++			}
+ 			continue;
+ 		}
+ 
+@@ -645,6 +785,13 @@ int recv_files(int f_in, int f_out, char *local_name)
  	enum logcode log_code = log_before_transfer ? FLOG : FINFO;
  	int max_phase = protocol_version >= 29 ? 2 : 1;
  	int dflt_perms = (ACCESSPERMS & ~orig_umask);
