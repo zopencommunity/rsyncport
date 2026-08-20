@@ -37,7 +37,7 @@ index 15f294e..9675bbd 100644
  
  
  def build_symlinks() -> 'None':
-@@ -2463,7 +2467,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
+@@ -2463,7 +2474,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
              # ENOSPC, EMLINK, EIO or a quota refusal would otherwise be reported
              # as a capability difference and quietly reshape the caller's
              # expectations, so let those propagate.
