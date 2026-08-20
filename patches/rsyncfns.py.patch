@@ -1,28 +1,76 @@
 diff --git a/testsuite/rsyncfns.py b/testsuite/rsyncfns.py
-index 15f294e..9675bbd 100644
+index 15f294e..0959602 100644
 --- a/testsuite/rsyncfns.py
 +++ b/testsuite/rsyncfns.py
-@@ -508,6 +508,9 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> bo
+@@ -487,7 +487,7 @@ def _reap_stale_daemons() -> 'None':
+                 pass
+ 
+ 
+-def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> bool:
++def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True, _retry: int = 0) -> bool:
+     """Confirm `port` is actually free once we hold its claim_ports() lock.
+ 
+     The byte-range lock only coordinates *live* test drivers, and the kernel
+@@ -506,19 +506,56 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> boo
+     probe socket is closed immediately, freeing the port for the daemon that is
+     about to bind it.
      """
++    # z/OS debug logging
++    if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++        print(f"[PORT-DEBUG] _probe_bindable(port={port}, _reaped={_reaped}, _retry={_retry})",
++              file=sys.stderr, flush=True)
++    
      s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
      s.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
 +    # On z/OS, set SO_LINGER to 0 to close immediately and avoid TIME_WAIT
 +    if sys.platform == 'zos':
 +        s.setsockopt(_socket.SOL_SOCKET, _socket.SO_LINGER, struct.pack('ii', 1, 0))
++        if os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Set SO_LINGER on socket for port {port}",
++                  file=sys.stderr, flush=True)
++    
      try:
          s.bind(('127.0.0.1', port))
++        if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Successfully bound to port {port}",
++                  file=sys.stderr, flush=True)
          return True
-@@ -515,6 +518,9 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> bo
+     except OSError as e:
          err = e
++        if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Bind failed for port {port}: errno={e.errno} {e.strerror}",
++                  file=sys.stderr, flush=True)
      finally:
          s.close()
-+    # On z/OS, give the kernel a moment to release the socket
-+    if sys.platform == 'zos':
-+        time.sleep(0.1)
-     # Bound by a squatter. If it's our own stranded orphan, kill it and retry once.
+-    # Bound by a squatter. If it's our own stranded orphan, kill it and retry once.
++        if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Closed probe socket for port {port}",
++                  file=sys.stderr, flush=True)
++    
++    # On z/OS, retry with exponential backoff before giving up
++    if sys.platform == 'zos' and _retry < 3:
++        delay = 0.1 * (2 ** _retry)  # 0.1s, 0.2s, 0.4s
++        if os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Waiting {delay}s before retry {_retry+1} for port {port}",
++                  file=sys.stderr, flush=True)
++        time.sleep(delay)
++        return _probe_bindable(port, _reaped=_reaped, fatal=fatal, _retry=_retry+1)
++    
++    # Bound by a squatter. If it's our own stranded orphan, kill it and retry.
      if not _reaped and _reap_orphan_daemon(port):
-         return _probe_bindable(port, _reaped=True, fatal=fatal)
-@@ -1572,8 +1578,12 @@ def cp_touch(src, dst) -> 'None':
+-        return _probe_bindable(port, _reaped=True, fatal=fatal)
++        if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Reaped orphan daemon on port {port}, retrying",
++                  file=sys.stderr, flush=True)
++        return _probe_bindable(port, _reaped=True, fatal=fatal, _retry=0)
+     if not fatal:
++        if sys.platform == 'zos' and os.environ.get('RSYNC_DEBUG_PORTS'):
++            print(f"[PORT-DEBUG] Giving up on port {port} (non-fatal)",
++                  file=sys.stderr, flush=True)
+         return False
+     test_fail(
+         f"port {port} was claimed for this run but something is still bound "
+@@ -1572,8 +1609,12 @@ def cp_touch(src, dst) -> 'None':
      if os.path.isdir(dst):
          dst = os.path.join(dst, os.path.basename(src))
      st = os.stat(dst, follow_symlinks=False)
@@ -37,7 +85,7 @@ index 15f294e..9675bbd 100644
  
  
  def build_symlinks() -> 'None':
-@@ -2463,7 +2473,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
+@@ -2463,7 +2504,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
              # ENOSPC, EMLINK, EIO or a quota refusal would otherwise be reported
              # as a capability difference and quietly reshape the caller's
              # expectations, so let those propagate.
