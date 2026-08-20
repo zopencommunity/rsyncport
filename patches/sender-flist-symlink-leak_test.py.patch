@@ -1,0 +1,24 @@
+diff --git a/testsuite/sender-flist-symlink-leak_test.py b/testsuite/sender-flist-symlink-leak_test.py
+index 7b85395..ca08968 100644
+--- a/testsuite/sender-flist-symlink-leak_test.py
++++ b/testsuite/sender-flist-symlink-leak_test.py
+@@ -11,14 +11,18 @@
+ # failed at secure_relative_open.
+ 
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+     SCRATCHDIR,
+     rsync_argv, get_testuid, get_rootuid, get_rootgid,
+-    rmtree, start_test_daemon, test_fail,
++    rmtree, start_test_daemon, test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    test_skipped("sender flist symlink leak confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ 
+ DAEMON_PORT = 12881
+ 

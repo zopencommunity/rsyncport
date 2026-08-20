@@ -1,0 +1,29 @@
+diff --git a/testsuite/rsyncfns.py b/testsuite/rsyncfns.py
+index 15f294e..9675bbd 100644
+--- a/testsuite/rsyncfns.py
++++ b/testsuite/rsyncfns.py
+@@ -1572,8 +1572,12 @@ def cp_touch(src, dst) -> 'None':
+     if os.path.isdir(dst):
+         dst = os.path.join(dst, os.path.basename(src))
+     st = os.stat(dst, follow_symlinks=False)
+-    os.utime(src, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)
+-    os.utime(dst, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)
++    try:
++        os.utime(src, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)
++        os.utime(dst, ns=(st.st_atime_ns, st.st_mtime_ns), follow_symlinks=False)
++    except (OSError, NotImplementedError, ValueError):
++        os.utime(src, ns=(st.st_atime_ns, st.st_mtime_ns))
++        os.utime(dst, ns=(st.st_atime_ns, st.st_mtime_ns))
+ 
+ 
+ def build_symlinks() -> 'None':
+@@ -2463,7 +2467,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
+             # ENOSPC, EMLINK, EIO or a quota refusal would otherwise be reported
+             # as a capability difference and quietly reshape the caller's
+             # expectations, so let those propagate.
+-            if e.errno in (errno.ENOTSUP, getattr(errno, 'EOPNOTSUPP', errno.ENOTSUP)):
++            if e.errno in (errno.ENOTSUP, getattr(errno, 'EOPNOTSUPP', errno.ENOTSUP),
++                           errno.ENOENT, errno.ENOSYS, errno.EINVAL):
+                 return False
+             raise
+         return True

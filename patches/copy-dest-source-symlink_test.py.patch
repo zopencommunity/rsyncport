@@ -1,0 +1,25 @@
+diff --git a/testsuite/copy-dest-source-symlink_test.py b/testsuite/copy-dest-source-symlink_test.py
+index d1f4454..a5b2667 100644
+--- a/testsuite/copy-dest-source-symlink_test.py
++++ b/testsuite/copy-dest-source-symlink_test.py
+@@ -15,14 +15,19 @@
+ 
+ import filecmp
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+     SCRATCHDIR,
+     rsync_argv, get_testuid, get_rootuid, get_rootgid,
+-    rmtree, start_test_daemon, test_fail,
++    rmtree, start_test_daemon, test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    # z/OS USS lacks directory descriptor and openat support for copy-dest parent pinning
++    test_skipped("copy-dest source symlink confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ 
+ DAEMON_PORT = 12883
+ 

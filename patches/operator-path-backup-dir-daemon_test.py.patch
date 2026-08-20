@@ -1,0 +1,20 @@
+diff --git a/testsuite/operator-path-backup-dir-daemon_test.py b/testsuite/operator-path-backup-dir-daemon_test.py
+index 7b5c0b1..8f67a2d 100644
+--- a/testsuite/operator-path-backup-dir-daemon_test.py
++++ b/testsuite/operator-path-backup-dir-daemon_test.py
+@@ -1,10 +1,14 @@
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+-    SCRATCHDIR, rmtree, rsync_argv, start_test_daemon, test_fail, write_daemon_conf,
++    SCRATCHDIR, rmtree, rsync_argv, start_test_daemon, test_fail, test_skipped, write_daemon_conf,
+ )
+ 
++if platform.system() == 'OS/390':
++    test_skipped("operator path backup-dir daemon confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ DAEMON_PORT = 12960
+ SECRET = "PROTECTED-IN-EXCLUDED-SUBTREE\n"
+ 

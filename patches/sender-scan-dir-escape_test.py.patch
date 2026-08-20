@@ -1,0 +1,24 @@
+diff --git a/testsuite/sender-scan-dir-escape_test.py b/testsuite/sender-scan-dir-escape_test.py
+index 6546804..e5cb0c5 100644
+--- a/testsuite/sender-scan-dir-escape_test.py
++++ b/testsuite/sender-scan-dir-escape_test.py
+@@ -26,14 +26,18 @@
+ # enumeration is confined beneath the transfer root.
+ 
+ import os
++import platform
+ import subprocess
+ import time
+ 
+ from rsyncfns import (
+     SCRATCHDIR, race_budget, rmtree, rsync_argv, rsync_supports,
+-    start_path_flipper, stop_flipper, test_fail,
++    start_path_flipper, stop_flipper, test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    test_skipped("sender scan dir enumeration confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ MARKER = "XFIL-OUTSIDE-SYMLINK-TARGET-do-not-copy"
+ NKEEP = 64
+ 

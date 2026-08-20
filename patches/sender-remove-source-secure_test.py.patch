@@ -1,0 +1,19 @@
+diff --git a/testsuite/sender-remove-source-secure_test.py b/testsuite/sender-remove-source-secure_test.py
+index 4be3be2..8fe9bdd 100644
+--- a/testsuite/sender-remove-source-secure_test.py
++++ b/testsuite/sender-remove-source-secure_test.py
+@@ -6,10 +6,13 @@ import time
+ 
+ from rsyncfns import (
+     race_budget, SCRATCHDIR, rmtree, rsync_argv,
+-    start_path_flipper, start_test_daemon, stop_flipper, test_fail, test_xfail,
++    start_path_flipper, start_test_daemon, stop_flipper, test_fail, test_skipped, test_xfail,
+     write_daemon_conf,
+ )
+ 
++if platform.system() == 'OS/390':
++    test_skipped("sender remove source dirfd confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ _CYGWIN = platform.system().startswith('CYGWIN')
+ 
+ # The sender's secure parent-dir open resolves on held dirfds with O_NOFOLLOW

@@ -1,0 +1,19 @@
+diff --git a/testsuite/secure-relpath-validation_test.py b/testsuite/secure-relpath-validation_test.py
+index c71294f..fd281d4 100644
+--- a/testsuite/secure-relpath-validation_test.py
++++ b/testsuite/secure-relpath-validation_test.py
+@@ -13,9 +13,13 @@
+ # secure_relative_open() and confirms it gets back -1/EINVAL (the
+ # marker that the front-door check kicked in, not the kernel).
+ 
++import platform
+ import subprocess
+ 
+-from rsyncfns import SCRATCHDIR, TOOLDIR, rmtree, test_fail
++from rsyncfns import SCRATCHDIR, TOOLDIR, rmtree, test_fail, test_skipped
++
++if platform.system() == 'OS/390':
++    test_skipped("t_secure_relpath openat/dirfd tests are not supported on OS/390")
+ 
+ 
+ testdir = SCRATCHDIR / 'relpath-test'

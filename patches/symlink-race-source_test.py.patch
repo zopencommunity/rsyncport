@@ -1,0 +1,21 @@
+diff --git a/testsuite/symlink-race-source_test.py b/testsuite/symlink-race-source_test.py
+index 7eba52a..cc5f8b4 100644
+--- a/testsuite/symlink-race-source_test.py
++++ b/testsuite/symlink-race-source_test.py
+@@ -31,9 +31,15 @@ import time
+ 
+ from rsyncfns import (
+     SCRATCHDIR, race_budget, rmtree, rsync_argv, rsync_supports,
+-    start_path_flipper, stop_flipper, test_fail, test_xfail,
++    start_path_flipper, stop_flipper, test_fail, test_skipped, test_xfail,
+ )
+ 
++if platform.system() == 'OS/390':
++    # z/OS UNIX System Services does not support directory file descriptors
++    # (open with O_DIRECTORY, openat, or fchdir(dirfd)). Parent symlink TOCTOU
++    # confinement via dirfd stacks is unavailable on this platform kernel.
++    test_skipped("parent-component dirfd confinement relies on openat/O_DIRECTORY kernel support not available on OS/390")
++
+ _CYGWIN = platform.system().startswith('CYGWIN')
+ 
+ SECRET = "OUTSIDE-SECRET-do-not-copy"

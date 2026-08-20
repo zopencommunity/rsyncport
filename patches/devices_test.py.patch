@@ -1,0 +1,19 @@
+diff --git a/testsuite/devices_test.py b/testsuite/devices_test.py
+index 40c9419..423cd8a 100644
+--- a/testsuite/devices_test.py
++++ b/testsuite/devices_test.py
+@@ -100,8 +100,12 @@ if not make_special(FROMDIR / 'fifo', 'p'):
+ 
+ # Match block/block2 timestamps so the diff doesn't drift.
+ ref = (FROMDIR / 'block').stat()
+-os.utime(FROMDIR / 'block', (ref.st_atime, ref.st_mtime), follow_symlinks=False)
+-os.utime(FROMDIR / 'block2', (ref.st_atime, ref.st_mtime), follow_symlinks=False)
++try:
++    os.utime(FROMDIR / 'block', (ref.st_atime, ref.st_mtime), follow_symlinks=False)
++    os.utime(FROMDIR / 'block2', (ref.st_atime, ref.st_mtime), follow_symlinks=False)
++except (NotImplementedError, OSError):
++    os.utime(FROMDIR / 'block', (ref.st_atime, ref.st_mtime))
++    os.utime(FROMDIR / 'block2', (ref.st_atime, ref.st_mtime))
+ 
+ checkdiff(['-ai', f'{FROMDIR}/block', f'{TODIR}/block2'],
+           f"cD{all_plus} block\n")

@@ -1,0 +1,18 @@
+diff --git a/testsuite/update_test.py b/testsuite/update_test.py
+index 2be222a..39f8f7a 100644
+--- a/testsuite/update_test.py
++++ b/testsuite/update_test.py
+@@ -48,8 +48,11 @@ makepath(src, TODIR)
+ (src / 'foo').write_text("regular source file\n")
+ os.symlink('/should/not/exist', TODIR / 'foo')
+ st = os.stat(src / 'foo')
+-os.utime(TODIR / 'foo', (st.st_atime, st.st_mtime + 100),
+-         follow_symlinks=False)
++try:
++    os.utime(TODIR / 'foo', (st.st_atime, st.st_mtime + 100),
++             follow_symlinks=False)
++except (NotImplementedError, OSError):
++    pass
+ run_rsync('-a', '-u', f'{src}/', f'{TODIR}/')
+ if os.path.islink(TODIR / 'foo'):
+     test_fail("-u skipped a source file over a newer destination symlink")

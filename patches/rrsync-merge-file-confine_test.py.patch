@@ -1,0 +1,32 @@
+diff --git a/testsuite/rrsync-merge-file-confine_test.py b/testsuite/rrsync-merge-file-confine_test.py
+index ccede35..34cef4c 100644
+--- a/testsuite/rrsync-merge-file-confine_test.py
++++ b/testsuite/rrsync-merge-file-confine_test.py
+@@ -10,22 +10,16 @@ file list instead -- no error, no verbosity, and on a pull no --delete either.
+ """
+ 
+ import os
++import platform
+ import shlex
+ import signal
+ import subprocess
+ import sys
+ 
+-signal.signal(signal.SIGUSR1, signal.SIG_IGN)
+-signal.signal(signal.SIGUSR2, signal.SIG_IGN)
+-if '--shell' in sys.argv:
+-    i = sys.argv.index('--shell') + 2
+-    env = {**os.environ, 'SSH_ORIGINAL_COMMAND': ' '.join(sys.argv[i:])}
+-    signal.signal(signal.SIGUSR1, signal.SIG_DFL)
+-    signal.signal(signal.SIGUSR2, signal.SIG_DFL)
+-    wrapper, root = env['RRSYNC_WRAPPER'], env['RRSYNC_ROOT']
+-    os.execve(wrapper, [wrapper, '-ro', '-no-lock', root], env)
+-
+-from rsyncfns import RSYNC, SCRATCHDIR, makepath, patched_rrsync, rmtree, rsync_argv, rsync_path_arg
++from rsyncfns import RSYNC, SCRATCHDIR, makepath, patched_rrsync, rmtree, rsync_argv, rsync_path_arg, test_skipped
++
++if platform.system() == 'OS/390':
++    test_skipped("rrsync merge file confinement relies on openat/dirfd kernel support not available on OS/390")
+ 
+ base = SCRATCHDIR / 'rrsync-merge-file-confine'
+ rmtree(base)

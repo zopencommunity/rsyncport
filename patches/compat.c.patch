@@ -1,54 +1,55 @@
 diff --git a/compat.c b/compat.c
-index d1ca316..83bd83d 100644
+index ba1b0c9..f8aa64f 100644
 --- a/compat.c
 +++ b/compat.c
-@@ -88,6 +88,9 @@ int xattr_sum_len = 0;
- 
+@@ -89,6 +89,10 @@ int xattr_sum_len = 0;
  /* These index values are for the file-list's extra-attribute array. */
  int pathname_ndx, depth_ndx, atimes_ndx, crtimes_ndx, uid_ndx, gid_ndx, acls_ndx, xattrs_ndx, unsort_ndx;
+ 
 +#ifdef __MVS__
 +int zos_tags_ndx = 0;
 +#endif
- 
++
  int receiver_symlink_times = 0; /* receiver can set the time on a symlink */
  int sender_symlink_iconv = 0;	/* sender should convert symlink content */
-@@ -593,6 +596,15 @@ void setup_protocol(int f_out,int f_in)
+ 
+@@ -649,6 +653,16 @@ void setup_protocol(int f_out,int f_in)
  		acls_ndx = ++file_extra_cnt;
  	if (preserve_xattrs)
  		xattrs_ndx = ++file_extra_cnt;
 +#ifdef __MVS__
-+	if (preserve_zos_tags) {
-+		zos_tags_ndx = (file_extra_cnt += 2); /* Need 2 slots: ccsid + txtflag */
-+		if (DEBUG_GTE(PROTO, 1)) {
-+			rprintf(FINFO, "[%s] Allocated zos_tags_ndx=%d, file_extra_cnt=%d, preserve_zos_tags=%d\n", 
-+				am_server ? "server" : "client", zos_tags_ndx, file_extra_cnt, preserve_zos_tags);
-+		}
-+	}
++	       if (preserve_zos_tags) {
++	               zos_tags_ndx = ++file_extra_cnt;
++	               ++file_extra_cnt; /* Need 2 slots: ccsid + txtflag */
++	               if (DEBUG_GTE(PROTO, 1)) {
++	                       rprintf(FINFO, "[%s] Allocated zos_tags_ndx=%d, file_extra_cnt=%d, preserve_zos_tags=%d\n",
++	                               am_server ? "server" : "client", zos_tags_ndx, file_extra_cnt, preserve_zos_tags);
++	               }
++	       }
 +#endif
  
- 	if (am_server)
- 		set_allow_inc_recurse();
-@@ -727,6 +739,14 @@ void setup_protocol(int f_out,int f_in)
+ 	if (!saw_stderr_opt && protocol_version <= 28 && am_server)
+ 		msgs2stderr = 0; /* The client side may not have stderr setup for us. */
+@@ -738,6 +752,14 @@ void setup_protocol(int f_out,int f_in)
  				compat_flags |= CF_INPLACE_PARTIAL_DIR;
  			if (strchr(client_info, 'u') != NULL)
  				compat_flags |= CF_ID0_NAMES;
 +#ifdef __MVS__
-+				if (DEBUG_GTE(PROTO, 1)) {
-+					rprintf(FINFO, "[DEBUG] setup_protocol: client_info='%s', preserve_zos_tags=%d, local_server=%d\n",
-+						client_info ? client_info : "NULL", preserve_zos_tags, local_server);
-+				}
-+				if ((local_server || (client_info && strchr(client_info, 'Z') != NULL)) && preserve_zos_tags)
-+					compat_flags |= CF_ZOS_TAGS;
++                               if (DEBUG_GTE(PROTO, 1)) {
++                                       rprintf(FINFO, "[DEBUG] setup_protocol: client_info='%s', preserve_zos_tags=%d, local_server=%d\n",
++                                               client_info ? client_info : "NULL", preserve_zos_tags, local_server);
++                               }
++                               if ((local_server || (client_info && strchr(client_info, 'Z') != NULL)) && preserve_zos_tags)
++                                       compat_flags |= CF_ZOS_TAGS;
 +#endif
  			if (strchr(client_info, 'v') != NULL) {
  				do_negotiated_strings = 1;
  				compat_flags |= CF_VARINT_FLIST_FLAGS;
-@@ -752,6 +772,60 @@ void setup_protocol(int f_out,int f_in)
+@@ -763,6 +785,58 @@ void setup_protocol(int f_out,int f_in)
  			fprintf(stderr, "Both rsync versions must be at least 3.2.0 for --crtimes.\n");
  			exit_cleanup(RERR_PROTOCOL);
  		}
-+
-+		#ifdef __MVS__
++#ifdef __MVS__
 +		/*
 +		 * Check negotiated flags for z/OS tag support.
 +		 * This MUST be done after compat_flags are exchanged.
@@ -99,8 +100,7 @@ index d1ca316..83bd83d 100644
 +				}
 +			}
 +		}
-+		#endif
-+
++#endif
  		if (am_sender) {
  			receiver_symlink_times = am_server
  			    ? strchr(client_info, 'L') != NULL
