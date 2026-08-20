@@ -2,7 +2,27 @@ diff --git a/testsuite/rsyncfns.py b/testsuite/rsyncfns.py
 index 15f294e..9675bbd 100644
 --- a/testsuite/rsyncfns.py
 +++ b/testsuite/rsyncfns.py
-@@ -1572,8 +1572,12 @@ def cp_touch(src, dst) -> 'None':
+@@ -508,10 +508,17 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> bo
+     """
+     s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+     s.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
++    # On z/OS, set SO_LINGER to 0 to close immediately and avoid TIME_WAIT
++    if sys.platform == 'zos':
++        s.setsockopt(_socket.SOL_SOCKET, _socket.SO_LINGER, struct.pack('ii', 1, 0))
+     try:
+         s.bind(('127.0.0.1', port))
+         return True
+     except OSError as e:
+         err = e
+     finally:
+         s.close()
++    # On z/OS, give the kernel a moment to release the socket
++    if sys.platform == 'zos':
++        time.sleep(0.1)
+     # Bound by a squatter. If it's our own stranded orphan, kill it and retry once.
+     if not _reaped and _reap_orphan_daemon(port):
+         return _probe_bindable(port, _reaped=True, fatal=fatal)
+@@ -1572,8 +1579,12 @@ def cp_touch(src, dst) -> 'None':
      if os.path.isdir(dst):
          dst = os.path.join(dst, os.path.basename(src))
      st = os.stat(dst, follow_symlinks=False)
