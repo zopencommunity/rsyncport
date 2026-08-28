@@ -1,5 +1,5 @@
 diff --git a/compat.c b/compat.c
-index ba1b0c9..f8aa64f 100644
+index ba1b0c9..d95fa59 100644
 --- a/compat.c
 +++ b/compat.c
 @@ -89,6 +89,10 @@ int xattr_sum_len = 0;
@@ -45,7 +45,7 @@ index ba1b0c9..f8aa64f 100644
  			if (strchr(client_info, 'v') != NULL) {
  				do_negotiated_strings = 1;
  				compat_flags |= CF_VARINT_FLIST_FLAGS;
-@@ -763,6 +785,58 @@ void setup_protocol(int f_out,int f_in)
+@@ -763,6 +785,65 @@ void setup_protocol(int f_out,int f_in)
  			fprintf(stderr, "Both rsync versions must be at least 3.2.0 for --crtimes.\n");
  			exit_cleanup(RERR_PROTOCOL);
  		}
@@ -87,7 +87,14 @@ index ba1b0c9..f8aa64f 100644
 +							rprintf(FINFO, "[%s] Keeping z/OS tags enabled for receiver (sender doesn't support tags)\n", am_server ? "server" : "client");
 +						}
 +					} else {
++						/* Sender with explicit --zos-tags but receiver doesn't support */
 +						rprintf(FWARNING, "Remote does not support z/OS tags. Remote tags will not be preserved.\n");
++						/* CRITICAL FIX: Actually disable z/OS tags to prevent buffer overflow on receiver */
++						preserve_zos_tags = 0;
++						if (zos_tags_ndx) {
++							file_extra_cnt -= 2;
++							zos_tags_ndx = 0;
++						}
 +					}
 +				}
 +			}
