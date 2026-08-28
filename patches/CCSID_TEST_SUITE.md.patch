@@ -1,0 +1,389 @@
+--- /dev/null	2026-08-19 07:29:26 -0400
++++ rsync-3.5.0_dh_28aug/testsuite/CCSID_TEST_SUITE.md	2026-08-28 04:13:21 -0400
+@@ -0,0 +1,386 @@
++# z/OS CCSID Conversion Test Suite
++
++## Overview
++Comprehensive test suite for validating z/OS CCSID conversion fixes for critical issues #2, #4, and #5 from the AI review.
++
++## Test Files
++
++### 1. zos-ccsid-conversion_test.py
++**Purpose:** Core functionality tests for CCSID conversion
++
++**Tests:**
++- **Test 1:** Multibyte UTF-8 characters across block boundaries (Issue #2)
++  - Tests various block sizes (16, 64, 512, 8192 bytes)
++  - Verifies multibyte sequences (Spanish, Japanese, Chinese, Greek) are preserved
++  - Ensures no EINVAL errors or mixed-encoding corruption
++
++- **Test 2:** Large files (>64KB) with multibyte content
++  - 10,000 lines with UTF-8 characters
++  - Tests stateful conversion across multiple 64KB chunks
++  - Verifies complete file integrity
++
++- **Test 3:** Delta transfers with matched blocks (Issue #5)
++  - Initial EBCDIC file on z/OS
++  - Modify with UTF-8 characters from Linux
++  - Verify both matched and literal blocks converted correctly
++
++- **Test 4:** Invalid UTF-8 sequence handling (Issue #4)
++  - File with illegal byte sequences
++  - Verifies transfer FAILS (not silent corruption)
++  - Ensures no wrongly-tagged files created
++
++- **Test 5:** IBM-1047 newline handling
++  - Tests 0x25 (EBCDIC LF) → 0x15 (z/OS NL) conversion
++  - Verifies files readable by z/OS tools
++
++- **Test 6:** Edge cases (empty files, ASCII-only)
++  - Empty file handling
++  - ASCII-only files with minimal overhead
++
++- **Test 7:** Complex delta patterns
++  - 1000 lines with 1% modification
++  - Tests conversion with high match ratio
++
++- **Test 8:** Non-ASCII filenames
++  - UTF-8 characters in filenames
++  - Graceful handling if not supported
++
++**Run time:** ~5-10 minutes  
++**Prerequisites:** z/OS system with chtag, iconv, UTF-8 support
++
++---
++
++### 2. zos-ccsid-performance_test.py
++**Purpose:** Performance benchmarking and overhead measurement
++
++**Tests:**
++- **Test 1:** Conversion overhead comparison
++  - 10MB ASCII-only file (no conversion)
++  - 10MB mixed ASCII/UTF-8 file (with conversion)
++  - Calculates overhead percentage
++  - **Acceptance:** <20% overhead (warning at >50%)
++
++- **Test 2:** Large file throughput
++  - 100MB file with UTF-8 content
++  - Measures end-to-end time and MB/s throughput
++  - **Acceptance:** >10MB/s on local disk
++
++- **Test 3:** Delta transfer efficiency
++  - 50MB base file
++  - Modify 1% of content
++  - Measure speedup vs full transfer
++  - **Acceptance:** >2x speedup for 1% changes
++
++- **Test 4:** Block size impact
++  - Test block sizes: 512, 2048, 8192, 32768
++  - Identifies optimal block size
++  - Reports throughput for each
++
++**Run time:** ~15-30 minutes  
++**Prerequisites:** z/OS system with sufficient disk space (>500MB)
++
++---
++
++### 3. zos-ccsid-regression_test.py
++**Purpose:** Ensure existing functionality not broken by changes
++
++**Tests:**
++- **Test 1:** Basic transfer without --zos-tags
++- **Test 2:** Transfer with --no-zos-tags
++- **Test 3:** ASCII/UTF-8 files bypass conversion
++- **Test 4:** Binary files
++- **Test 5:** Directories and symlinks
++- **Test 6:** --inplace option
++- **Test 7:** --append option
++- **Test 8:** --checksum option
++- **Test 9:** --whole-file option
++- **Test 10:** Compression (-z)
++- **Test 11:** --delete option
++- **Test 12:** Dry run (-n)
++- **Test 13:** Sparse files
++
++**Run time:** ~5-10 minutes  
++**Prerequisites:** z/OS system with full rsync feature set
++
++---
++
++## Running the Tests
++
++### Individual Test
++```bash
++cd rsync-3.5.0
++./runtests.py testsuite/zos-ccsid-conversion_test.py
++```
++
++### All CCSID Tests
++```bash
++cd rsync-3.5.0
++./runtests.py testsuite/zos-ccsid-*_test.py
++```
++
++### Quick Test (Core + Regression)
++```bash
++cd rsync-3.5.0
++./runtests.py testsuite/zos-ccsid-conversion_test.py testsuite/zos-ccsid-regression_test.py
++```
++
++### Full Test Suite (Including Performance)
++```bash
++cd rsync-3.5.0
++./runtests.py testsuite/zos-ccsid-*_test.py
++```
++
++### With Verbose Output
++```bash
++cd rsync-3.5.0
++./runtests.py -v testsuite/zos-ccsid-conversion_test.py
++```
++
++---
++
++## Test Requirements
++
++### System Requirements
++- z/OS operating system (OS/390)
++- rsync compiled with z/OS CCSID support
++- Commands available: `chtag`, `iconv`
++- UTF-8 and IBM-1047 CCSID support
++
++### Disk Space
++- Core tests: ~50MB
++- Performance tests: ~500MB
++- Regression tests: ~100MB
++- **Total:** ~650MB free space recommended
++
++### Time Requirements
++- Core tests: 5-10 minutes
++- Performance tests: 15-30 minutes
++- Regression tests: 5-10 minutes
++- **Total:** ~30-50 minutes for complete suite
++
++---
++
++## Expected Results
++
++### Success Criteria
++
++**Core Tests (zos-ccsid-conversion_test.py):**
++- All 8 tests PASS
++- No EINVAL errors on multibyte boundaries
++- No silent conversion failures
++- No mixed-encoding corruption
++- Invalid UTF-8 correctly rejected
++
++**Performance Tests (zos-ccsid-performance_test.py):**
++- Conversion overhead: <20%
++- 100MB throughput: >10MB/s
++- Delta speedup: >2x for 1% changes
++- Block size impact documented
++
++**Regression Tests (zos-ccsid-regression_test.py):**
++- All 13 tests PASS
++- No existing functionality broken
++- All rsync options still work
++- Binary/ASCII files unaffected
++
++### Failure Handling
++
++**Test failures should be investigated:**
++1. Check error messages in test output
++2. Review rsync error logs
++3. Verify CCSID tags with `chtag -p`
++4. Check file content with hex dump
++5. Compare with expected behavior documented in CRITICAL_FIXES_SUMMARY.md
++
++---
++
++## Integration with rsync Test Suite
++
++### Automatic Discovery
++The rsync test runner (`runtests.py`) automatically discovers tests matching `*_test.py` pattern in the `testsuite/` directory.
++
++### Test Naming Convention
++- `zos-ccsid-conversion_test.py` - Core functionality
++- `zos-ccsid-performance_test.py` - Performance benchmarks
++- `zos-ccsid-regression_test.py` - Regression tests
++
++### Skip on Non-z/OS
++All tests check `platform.system() != 'OS/390'` and skip automatically on non-z/OS systems using `test_skipped()`.
++
++### Dependencies
++All tests use the standard `rsyncfns` module for:
++- Path management (FROMDIR, TODIR, SCRATCHDIR)
++- rsync execution (run_rsync, rsync_argv)
++- Test utilities (test_fail, test_skipped)
++- File operations (makepath)
++
++---
++
++## Test Output
++
++### Success Output
++```
++======================================================================
++TEST 1: Multibyte UTF-8 characters (Critical Issue #2)
++======================================================================
++
++Test 1.1: Block size 16
++  CCSID: IBM-1047, Text: 1
++
++Test 1.2: Block size 64
++  CCSID: IBM-1047, Text: 1
++
++...
++
++Test 1: PASS - Multibyte characters handled correctly
++
++======================================================================
++ALL TESTS COMPLETED SUCCESSFULLY
++======================================================================
++```
++
++### Failure Output
++```
++FAIL: Test 1: Content mismatch with block size 64
++Expected: "Spanish: Ñoño España"
++Actual:   "Spanish: \xff\xfe España"
++```
++
++---
++
++## Continuous Integration
++
++### CI Pipeline Integration
++```yaml
++# Example CI configuration
++test-zos-ccsid:
++  platform: zos
++  script:
++    - cd rsync-3.5.0
++    - ./runtests.py testsuite/zos-ccsid-conversion_test.py
++    - ./runtests.py testsuite/zos-ccsid-regression_test.py
++  artifacts:
++    - testtmp/  # Test logs and scratch files
++```
++
++### Nightly Performance Tests
++```bash
++# Run performance tests nightly
++cd rsync-3.5.0
++./runtests.py --verbose testsuite/zos-ccsid-performance_test.py > performance-$(date +%Y%m%d).log
++```
++
++---
++
++## Troubleshooting
++
++### Common Issues
++
++**"chtag command not found"**
++- Install z/OS file tagging utilities
++- Ensure PATH includes /bin
++
++**"iconv command not found"**
++- Install z/OS iconv utilities
++- Ensure character conversion support is enabled
++
++**"Transfer failed with exit code 23"**
++- Check rsync error messages
++- Verify file permissions
++- Check CCSID tag on source file
++
++**"Content mismatch after conversion"**
++- Verify source file is valid UTF-8
++- Check CCSID tag with `chtag -p file`
++- Review hex dump of destination
++
++**Performance tests timeout**
++- Increase disk I/O resources
++- Check for disk space issues
++- Consider running on faster storage
++
++### Debug Mode
++```bash
++# Run with debug output
++RSYNC_DEBUG=all ./runtests.py -v testsuite/zos-ccsid-conversion_test.py
++```
++
++---
++
++## Test Maintenance
++
++### Adding New Tests
++1. Create new `*_test.py` file in `testsuite/`
++2. Import from `rsyncfns`
++3. Add platform check: `if platform.system() != 'OS/390': test_skipped(...)`
++4. Use standard test utilities
++5. Document in this file
++
++### Modifying Existing Tests
++1. Update test code
++2. Update expected results in this documentation
++3. Run full test suite to verify no regressions
++4. Update CRITICAL_FIXES_SUMMARY.md if behavior changes
++
++### Test Data Generation
++Tests create their own data in `FROMDIR` (from) and verify in `TODIR` (to).  
++Scratch files go in `SCRATCHDIR`.  
++All cleaned up automatically after test run.
++
++---
++
++## Coverage
++
++### Critical Issues Covered
++- ✅ Issue #2: Multibyte sequences (Test 1, 2, 7)
++- ✅ Issue #4: Silent failures (Test 4)
++- ✅ Issue #5: Matched blocks (Test 3, 7)
++
++### Feature Coverage
++- ✅ Multibyte UTF-8 (Spanish, Japanese, Chinese, Greek)
++- ✅ Large files (>64KB chunks)
++- ✅ Delta transfers with matched blocks
++- ✅ Invalid UTF-8 detection
++- ✅ IBM-1047 newline conversion
++- ✅ Empty files
++- ✅ ASCII-only files
++- ✅ Block size variations
++- ✅ All major rsync options
++
++### Code Paths
++- ✅ File-level conversion (convert_file_zos_ccsid)
++- ✅ Conversion error handling (all errno cases)
++- ✅ Temporary file creation/cleanup
++- ✅ iconv state management
++- ✅ Newline fix for IBM-1047
++- ✅ Bypass for ASCII/UTF-8/binary
++
++---
++
++## References
++
++- **Implementation:** CRITICAL_FIXES_SUMMARY.md
++- **Code Changes:** CODE_CHANGES_SUMMARY.md
++- **Test Plan:** TEST_PLAN_CCSID_FIXES.md
++- **Quick Reference:** CHECKLIST.md
++
++---
++
++## Status
++
++**Date:** 2025-01-XX  
++**Version:** 1.0  
++**Status:** Complete and integrated  
++**Last Updated:** 2025-01-XX  
++
++**Test Coverage:**
++- Core functionality: 8 tests
++- Performance: 4 benchmarks
++- Regression: 13 tests
++- **Total:** 25 tests
++
++**Execution Time:**
++- Quick run (core + regression): ~10-20 minutes
++- Full run (including performance): ~30-50 minutes
++
++**Success Rate:** To be measured on first run

@@ -1,5 +1,5 @@
 diff --git a/receiver.c b/receiver.c
-index 28d663a..48c3160 100644
+index 28d663a..0d97542 100644
 --- a/receiver.c
 +++ b/receiver.c
 @@ -72,6 +72,12 @@ extern int fuzzy_basis;
@@ -15,32 +15,45 @@ index 28d663a..48c3160 100644
  extern int operator_path_resolve;
  
  static struct bitbag *delayed_bits = NULL;
-@@ -80,6 +86,95 @@ static flist_ndx_list batch_redo_list;
+@@ -80,6 +86,220 @@ static flist_ndx_list batch_redo_list;
  /* This is non-0 when we are updating the basis file or an identical copy: */
  static int updating_basis_or_equiv;
  
 +#ifdef __MVS__
 +#ifdef ICONV_CONST
 +/* iconv handle for z/OS CCSID conversion */
-+static iconv_t ic_zos_convert = (iconv_t)-1;
 +static int zos_source_ccsid = 819; /* ASCII by default */
-+static int zos_target_ccsid = 0;
 +
 +/* Convert data from source CCSID to target CCSID for z/OS */
-+static char *convert_zos_ccsid(const char *data, int len, int *out_len, int target_ccsid)
++/* Convert a complete file to target z/OS CCSID after reconstruction.
++ * This avoids issues with:
++ * - Multibyte sequences split across rsync literal blocks
++ * - Conversion state being reset between blocks
++ * - Matched blocks bypassing conversion
++ * Returns 0 on success, -1 on error. */
++static int convert_file_zos_ccsid(int fd, const char *fname, OFF_T file_length, int target_ccsid)
 +{
-+        char *converted_buf = NULL;
-+        size_t inleft, outleft, converted_len;
-+        char *inbuf, *outbuf;
 +        char ccsid_from[32], ccsid_to[32];
++        char *read_buf = NULL, *converted_buf = NULL;
++        size_t inleft, outleft, converted_total = 0;
++        char *inbuf, *outbuf;
++        ssize_t nread;
++        OFF_T offset = 0;
++        int temp_fd = -1;
++        char temp_fname[MAXPATHLEN];
++        int ret = -1;
++        iconv_t converter = (iconv_t)-1;
++        size_t read_chunk = 64 * 1024; /* 64KB chunks */
++        size_t converted_size;
++
++        (void)file_length; /* Used for validation/progress in future */
 +
 +        if (target_ccsid == 0 || target_ccsid == 819 || target_ccsid == 1208) {
-+                /* No conversion needed for ASCII or UTF-8 (compatible with ASCII) */
-+                *out_len = len;
-+                return (char *)data;
++                /* No conversion needed for ASCII or UTF-8 */
++                return 0;
 +        }
 +
-+        /* Setup iconv for CCSID conversion - use proper charset names */
++        /* Setup iconv for CCSID conversion */
 +        if (zos_source_ccsid == 819) {
 +                snprintf(ccsid_from, sizeof(ccsid_from), "ISO8859-1");
 +        } else {
@@ -53,57 +66,169 @@ index 28d663a..48c3160 100644
 +                snprintf(ccsid_to, sizeof(ccsid_to), "IBM-%d", target_ccsid);
 +        }
 +
-+        if (ic_zos_convert == (iconv_t)-1 || zos_target_ccsid != target_ccsid) {
-+                if (ic_zos_convert != (iconv_t)-1)
-+                        iconv_close(ic_zos_convert);
-+
-+                ic_zos_convert = iconv_open(ccsid_to, ccsid_from);
-+                if (ic_zos_convert == (iconv_t)-1) {
-+                        rprintf(FERROR, "iconv_open(\"%s\", \"%s\") failed for z/OS CCSID conversion: %s\n",
-+                                ccsid_to, ccsid_from, strerror(errno));
-+                        *out_len = len;
-+                        return (char *)data;
-+                }
-+                zos_target_ccsid = target_ccsid;
++        converter = iconv_open(ccsid_to, ccsid_from);
++        if (converter == (iconv_t)-1) {
++                rsyserr(FERROR_XFER, errno, "iconv_open(\"%s\", \"%s\") failed for z/OS CCSID conversion on %s",
++                        ccsid_to, ccsid_from, full_fname(fname));
++                return -1;
 +        }
 +
-+        /* Allocate buffer for converted data (worst case: 4x expansion for multibyte) */
-+        converted_len = len * 4;
-+        converted_buf = new_array(char, converted_len);
++        /* Create temporary file for converted data */
++        snprintf(temp_fname, sizeof(temp_fname), "%s.ccsid-convert-XXXXXX", fname);
++        temp_fd = do_mkstemp(temp_fname, 0600);
++        if (temp_fd < 0) {
++                rsyserr(FERROR_XFER, errno, "mkstemp failed for CCSID conversion temp file %s", temp_fname);
++                goto cleanup;
++        }
 +
-+        inbuf = (char *)data;
++        /* Allocate buffers */
++        read_buf = new_array(char, read_chunk);
++        /* Worst case: 4x expansion for multibyte */
++        converted_buf = new_array(char, read_chunk * 4);
++
++        /* Rewind source file */
++        if (do_lseek(fd, 0, SEEK_SET) != 0) {
++                rsyserr(FERROR_XFER, errno, "lseek failed during CCSID conversion of %s", full_fname(fname));
++                goto cleanup;
++        }
++
++        /* Convert file in chunks, maintaining iconv state across chunks */
++        while ((nread = read(fd, read_buf, read_chunk)) > 0) {
++                inbuf = read_buf;
++                inleft = nread;
++
++                /* Convert this chunk */
++                while (inleft > 0) {
++                        outbuf = converted_buf;
++                        outleft = read_chunk * 4;
++
++                        size_t result = iconv(converter, &inbuf, &inleft, &outbuf, &outleft);
++                        converted_size = (read_chunk * 4) - outleft;
++
++                        if (result == (size_t)-1) {
++                                if (errno == E2BIG) {
++                                        /* Output buffer full, write and continue */
++                                } else if (errno == EINVAL) {
++                                        /* Incomplete multibyte sequence at end of chunk.
++                                         * This is OK if we're not at EOF; will be completed in next chunk.
++                                         * Save incomplete bytes for next iteration. */
++                                        if (inleft > 0 && inleft < 16) {
++                                                /* Save incomplete bytes, write converted data, continue */
++                                                break;
++                                        }
++                                        rsyserr(FERROR_XFER, errno, "iconv EINVAL with %zu bytes remaining during conversion of %s",
++                                                inleft, full_fname(fname));
++                                        goto cleanup;
++                                } else if (errno == EILSEQ) {
++                                        rsyserr(FERROR_XFER, errno, "iconv illegal sequence at offset %lld during conversion of %s",
++                                                (long long)offset, full_fname(fname));
++                                        goto cleanup;
++                                } else {
++                                        rsyserr(FERROR_XFER, errno, "iconv conversion failed at offset %lld for %s",
++                                                (long long)offset, full_fname(fname));
++                                        goto cleanup;
++                                }
++                        }
++
++                        /* Write converted data */
++                        if (converted_size > 0) {
++                                if (write(temp_fd, converted_buf, converted_size) != (ssize_t)converted_size) {
++                                        rsyserr(FERROR_XFER, errno, "write failed during CCSID conversion of %s", full_fname(fname));
++                                        goto cleanup;
++                                }
++                                converted_total += converted_size;
++                        }
++                }
++
++                offset += nread;
++        }
++
++        if (nread < 0) {
++                rsyserr(FERROR_XFER, errno, "read failed during CCSID conversion of %s", full_fname(fname));
++                goto cleanup;
++        }
++
++        /* Flush any remaining converted data */
 +        outbuf = converted_buf;
-+        inleft = len;
-+        outleft = converted_len;
-+
-+        /* Reset conversion state */
-+        iconv(ic_zos_convert, NULL, 0, NULL, 0);
-+
-+        /* Perform conversion */
-+        if (iconv(ic_zos_convert, &inbuf, &inleft, &outbuf, &outleft) == (size_t)-1) {
-+                if (errno != E2BIG) {
-+                        rprintf(FERROR, "iconv conversion failed for z/OS CCSID %d: %s\n",
-+                                target_ccsid, strerror(errno));
-+                        free(converted_buf);
-+                        *out_len = len;
-+                        return (char *)data;
++        outleft = read_chunk * 4;
++        if (iconv(converter, NULL, NULL, &outbuf, &outleft) == (size_t)-1) {
++                rsyserr(FERROR_XFER, errno, "iconv flush failed during conversion of %s", full_fname(fname));
++                goto cleanup;
++        }
++        converted_size = (read_chunk * 4) - outleft;
++        if (converted_size > 0) {
++                if (write(temp_fd, converted_buf, converted_size) != (ssize_t)converted_size) {
++                        rsyserr(FERROR_XFER, errno, "write failed during CCSID conversion flush of %s", full_fname(fname));
++                        goto cleanup;
 +                }
++                converted_total += converted_size;
 +        }
 +
-+        *out_len = converted_len - outleft;
-+
-+        /* z/OS-specific newline fix: iconv converts LF (0x0a) to EBCDIC LF (0x25),
-+         * but z/OS native text files use NL (0x15). Convert 0x25 -> 0x15 for IBM-1047 */
++        /* z/OS-specific newline fix for IBM-1047 */
 +        if (target_ccsid == 1047) {
-+                char *p = converted_buf;
-+                size_t i;
-+                for (i = 0; i < *out_len; i++) {
-+                        if ((unsigned char)p[i] == 0x25)  /* EBCDIC LF */
-+                                p[i] = 0x15;  /* z/OS NL */
++                /* Read back and fix newlines */
++                if (do_lseek(temp_fd, 0, SEEK_SET) != 0) {
++                        rsyserr(FERROR_XFER, errno, "lseek failed during newline fix for %s", full_fname(fname));
++                        goto cleanup;
++                }
++
++                while ((nread = read(temp_fd, read_buf, read_chunk)) > 0) {
++                        size_t i;
++                        int modified = 0;
++                        for (i = 0; i < (size_t)nread; i++) {
++                                if ((unsigned char)read_buf[i] == 0x25) {  /* EBCDIC LF */
++                                        read_buf[i] = 0x15;  /* z/OS NL */
++                                        modified = 1;
++                                }
++                        }
++                        if (modified) {
++                                OFF_T write_offset = do_lseek(temp_fd, -nread, SEEK_CUR);
++                                if (write_offset < 0) {
++                                        rsyserr(FERROR_XFER, errno, "lseek back failed during newline fix for %s", full_fname(fname));
++                                        goto cleanup;
++                                }
++                                if (write(temp_fd, read_buf, nread) != nread) {
++                                        rsyserr(FERROR_XFER, errno, "write failed during newline fix for %s", full_fname(fname));
++                                        goto cleanup;
++                                }
++                        }
 +                }
 +        }
 +
-+        return converted_buf;
++        /* Copy converted data back to original file */
++        if (do_lseek(fd, 0, SEEK_SET) != 0 || do_lseek(temp_fd, 0, SEEK_SET) != 0) {
++                rsyserr(FERROR_XFER, errno, "lseek failed during CCSID conversion copy-back for %s", full_fname(fname));
++                goto cleanup;
++        }
++
++        while ((nread = read(temp_fd, read_buf, read_chunk)) > 0) {
++                if (write(fd, read_buf, nread) != nread) {
++                        rsyserr(FERROR_XFER, errno, "write failed during CCSID conversion copy-back for %s", full_fname(fname));
++                        goto cleanup;
++                }
++        }
++
++        /* Truncate to converted size */
++        if (do_ftruncate(fd, converted_total) < 0) {
++                rsyserr(FERROR_XFER, errno, "ftruncate failed after CCSID conversion of %s", full_fname(fname));
++                goto cleanup;
++        }
++
++        ret = 0; /* Success */
++
++cleanup:
++        if (converter != (iconv_t)-1)
++                iconv_close(converter);
++        if (read_buf)
++                free(read_buf);
++        if (converted_buf)
++                free(converted_buf);
++        if (temp_fd >= 0) {
++                close(temp_fd);
++                unlink(temp_fname);
++        }
++
++        return ret;
 +}
 +#endif
 +#endif
@@ -111,58 +236,34 @@ index 28d663a..48c3160 100644
  #define TMPNAME_SUFFIX ".XXXXXX"
  #define TMPNAME_SUFFIX_LEN ((int)sizeof TMPNAME_SUFFIX - 1)
  #define MAX_UNIQUE_NUMBER 999999
-@@ -559,10 +654,50 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
- 			cleanup_got_literal = 1;
+@@ -668,6 +888,26 @@ static int receive_data(int f_in, char *fname_r, int fd_r, OFF_T size_r,
+ 	if (mapbuf)
+ 		unmap_file(mapbuf);
  
- 			sum_update(data, i);
 +#ifdef __MVS__
 +#ifdef ICONV_CONST
++	/* Convert complete file to target z/OS CCSID after reconstruction is complete.
++	 * This handles:
++	 * - Multibyte sequences that may span rsync block boundaries
++	 * - Both literal and matched data blocks uniformly
++	 * - Maintains iconv state properly across the entire file */
++	if (fd != -1 && fname && preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)
++	    && !(compat_flags & CF_ZOS_TAGS)) {
++		int target_ccsid = F_ZOS_CCSID(file);
 +
-+        /* Convert data for z/OS CCSID if needed (only for incoming data from non-z/OS senders) */
-+
-+        if (fd != -1 && preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)
-+            && !(compat_flags & CF_ZOS_TAGS)) {
-+
-+                int target_ccsid = F_ZOS_CCSID(file);
-+                int converted_len = i;
-+                char *write_data = (char *)data;
-+                char *converted_data = NULL;
-+
-+                if (target_ccsid != 0 && target_ccsid != 819 && target_ccsid != 1208) {
-+
-+                        converted_data = convert_zos_ccsid(data, i, &converted_len, target_ccsid);
- 
-+                        if (converted_data != data) {
-+                                write_data = converted_data;
-+                        }
-+                }
-+
-+                if (write_file(fd, 0, offset, write_data, converted_len) != converted_len) {
-+
-+                        if (converted_data && converted_data != data)
-+                                free(converted_data);
-+
-+                        goto report_write_error;
-+                }
-+
-+                if (converted_data && converted_data != data)
-+                        free(converted_data);
-+
-+                offset += converted_len;
-+
-+        } else
-+#endif
-+#endif
-+
-+       		 	{
- 			if (fd != -1 && write_file(fd, 0, offset, data, i) != i)
- 				goto report_write_error;
- 			offset += i;
++		if (target_ccsid != 0 && target_ccsid != 819 && target_ccsid != 1208) {
++			if (convert_file_zos_ccsid(fd, fname, offset, target_ccsid) < 0) {
++				/* Conversion failed - this is a transfer error */
++				return 0;
 +			}
- 			continue;
- 		}
- 
-@@ -808,6 +943,12 @@ int recv_files(int f_in, int f_out, char *local_name)
++		}
++	}
++#endif
++#endif
+ 	read_buf(f_in, sender_file_sum, xfer_sum_len);
+ 	if (DEBUG_GTE(DELTASUM, 2))
+ 		rprintf(FINFO,"got file_sum\n");
+@@ -808,6 +1048,12 @@ int recv_files(int f_in, int f_out, char *local_name)
  	enum logcode log_code = log_before_transfer ? FLOG : FINFO;
  	int max_phase = protocol_version >= 29 ? 2 : 1;
  	int dflt_perms = (ACCESSPERMS & ~orig_umask);

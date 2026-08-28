@@ -1,0 +1,21 @@
+diff --git a/testsuite/msg-io-timeout-zero_test.py b/testsuite/msg-io-timeout-zero_test.py
+index b60514c..c663f32 100644
+--- a/testsuite/msg-io-timeout-zero_test.py
++++ b/testsuite/msg-io-timeout-zero_test.py
+@@ -17,9 +17,15 @@ import sys
+ import time
+ 
+ from rsyncfns import (
+-    SCRATCHDIR, claim_ports, rmtree, rsync_argv, test_fail, test_skipped,
++    SCRATCHDIR, can_bind_specific_port, claim_ports, rmtree, rsync_argv, test_fail, test_skipped,
+ )
+ 
++# Runtime capability check: some systems (including some z/OS configurations)
++# have security policies that restrict binding to specific ports. Test if this
++# system allows binding to specific ports before proceeding.
++if not can_bind_specific_port():
++    test_skipped("System security policy restricts binding to specific ports")
++
+ # No require_tcp: this connects to our own local crafted server over a
+ # rsync:// URL (a plain TCP connect to 127.0.0.1), independent of the test's
+ # own pipe/tcp transport, so it runs in either mode.

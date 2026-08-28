@@ -1,8 +1,51 @@
 diff --git a/testsuite/rsyncfns.py b/testsuite/rsyncfns.py
-index 15f294e..0959602 100644
+index 15f294e..2e80653 100644
 --- a/testsuite/rsyncfns.py
 +++ b/testsuite/rsyncfns.py
-@@ -487,7 +487,7 @@ def _reap_stale_daemons() -> 'None':
+@@ -202,6 +202,42 @@ def test_skipped(msg: str) -> 'None':
+     sys.exit(Exit.SKIP)
+ 
+ 
++def can_bind_specific_port() -> bool:
++    """Runtime capability check: can we bind to a specific port?
++    
++    Some z/OS configurations have security policies that restrict binding to
++    specific ports, allowing only OS-assigned ephemeral ports. This function
++    performs a runtime check by attempting to bind to a high port number.
++    
++    Returns True if port binding works, False if restricted by security policy.
++    """
++    import socket
++    import random
++    
++    # Try a few high ports in case one is in use
++    for _ in range(5):
++        test_port = random.randint(50000, 60000)
++        try:
++            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
++            s.bind(('127.0.0.1', test_port))
++            s.close()
++            return True  # Successfully bound to specific port
++        except OSError as e:
++            if e.errno == errno.EADDRINUSE:
++                continue  # Port in use, try another
++            elif e.errno in (errno.EACCES, errno.EPERM):
++                # Permission denied - security policy restriction
++                return False
++            # Other errors - continue trying
++            continue
++        except Exception:
++            continue
++    
++    # If all attempts failed, assume restriction
++    return False
++
++
+ def test_xfail(msg: str) -> 'None':
+     sys.stderr.write(msg.rstrip() + '\n')
+     sys.exit(Exit.XFAIL)
+@@ -487,7 +523,7 @@ def _reap_stale_daemons() -> 'None':
                  pass
  
  
@@ -11,7 +54,7 @@ index 15f294e..0959602 100644
      """Confirm `port` is actually free once we hold its claim_ports() lock.
  
      The byte-range lock only coordinates *live* test drivers, and the kernel
-@@ -506,19 +506,56 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> boo
+@@ -506,19 +542,56 @@ def _probe_bindable(port: int, _reaped: bool = False, fatal: bool = True) -> boo
      probe socket is closed immediately, freeing the port for the daemon that is
      about to bind it.
      """
@@ -70,7 +113,7 @@ index 15f294e..0959602 100644
          return False
      test_fail(
          f"port {port} was claimed for this run but something is still bound "
-@@ -1572,8 +1609,12 @@ def cp_touch(src, dst) -> 'None':
+@@ -1572,8 +1645,12 @@ def cp_touch(src, dst) -> 'None':
      if os.path.isdir(dst):
          dst = os.path.join(dst, os.path.basename(src))
      st = os.stat(dst, follow_symlinks=False)
@@ -85,7 +128,7 @@ index 15f294e..0959602 100644
  
  
  def build_symlinks() -> 'None':
-@@ -2463,7 +2504,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
+@@ -2463,7 +2540,8 @@ def hardlink_symlinks_supported(where=None) -> bool:
              # ENOSPC, EMLINK, EIO or a quota refusal would otherwise be reported
              # as a capability difference and quietly reshape the caller's
              # expectations, so let those propagate.
