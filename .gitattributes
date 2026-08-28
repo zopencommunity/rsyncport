@@ -1,1 +1,10 @@
-*	text	working-tree-encoding=ISO8859-1
+# Git attributes for rsync z/OS port
+
+# Default: treat Python files as text
+*.py text
+
+# Exception: z/OS CCSID test files MUST stay in UTF-8 (no EBCDIC conversion)
+# These files contain UTF-8 test data (Spanish characters, etc.)
+rsync-3.5.0/testsuite/zos-ccsid-conversion_test.py binary
+rsync-3.5.0/testsuite/zos-ccsid-performance_test.py binary
+rsync-3.5.0/testsuite/zos-ccsid-regression_test.py binary
