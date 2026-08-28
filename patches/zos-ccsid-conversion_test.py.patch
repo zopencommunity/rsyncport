@@ -1,7 +1,8 @@
 --- /dev/null	2026-08-19 07:29:26 -0400
-+++ rsync-3.5.0_dh_28aug/testsuite/zos-ccsid-conversion_test.py	2026-08-28 04:36:37 -0400
-@@ -0,0 +1,484 @@
++++ rsync-3.5.0/testsuite/zos-ccsid-conversion_test.py	2026-08-28 06:59:30 -0400
+@@ -0,0 +1,485 @@
 +#!/usr/bin/env python3
++# -*- coding: utf-8 -*-
 +# Test z/OS CCSID conversion functionality
 +# Tests the fixes for critical issues #2, #4, #5 from AI review
 +
