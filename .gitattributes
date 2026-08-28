@@ -1,1 +1,8 @@
+# Default for most files
 *	text	working-tree-encoding=ISO8859-1
+
+# z/OS CCSID test files must NOT be converted - keep as-is from repository
+# They are stored as UTF-8 and must remain UTF-8 on disk
+rsync-3.5.0/testsuite/zos-ccsid-conversion_test.py -text
+rsync-3.5.0/testsuite/zos-ccsid-performance_test.py -text
+rsync-3.5.0/testsuite/zos-ccsid-regression_test.py -text
