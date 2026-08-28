@@ -1,5 +1,5 @@
 --- /dev/null	2026-08-19 07:29:26 -0400
-+++ rsync-3.5.0/testsuite/zos-ccsid-performance_test.py	2026-08-28 06:59:34 -0400
++++ rsync-3.5.0/testsuite/zos-ccsid-performance_test.py	2026-08-28 07:29:34 -0400
 @@ -0,0 +1,295 @@
 +#!/usr/bin/env python3
 +# -*- coding: utf-8 -*-
@@ -108,7 +108,7 @@
 +    for i in range(500000):
 +        # Every 10th line has UTF-8
 +        if i % 10 == 0:
-+            f.write(f"Line {i}: UTF-8 content Ñoño España 日本語\n")
++            f.write(f"Line {i}: UTF-8 content \u00d1o\u00f1o Espa\u00f1a \u65e5\u672c\u8a9e\n")
 +        else:
 +            f.write(f"Line {i}: This is ASCII-only text for performance testing\n")
 +
@@ -153,7 +153,7 @@
 +with open(large_file, 'w', encoding='utf-8') as f:
 +    target_size = 100 * 1024 * 1024  # 100MB
 +    while large_file.stat().st_size < target_size:
-+        f.write(f"Line {lines_written}: Test with UTF-8 Ñoño España 日本語 中文\n")
++        f.write(f"Line {lines_written}: Test with UTF-8 \u00d1o\u00f1o Espa\u00f1a \u65e5\u672c\u8a9e \u4e2d\u6587\n")
 +        lines_written += 1
 +
 +file_size = large_file.stat().st_size
@@ -213,7 +213,7 @@
 +    with open(delta_mod, 'w', encoding='utf-8') as fout:
 +        for i, line in enumerate(fin):
 +            if i % 100 == 0:
-+                fout.write(f"Line {i}: MODIFIED with UTF-8 Ñoño\n")
++                fout.write(f"Line {i}: MODIFIED with UTF-8 \u00d1o\u00f1o\n")
 +            else:
 +                fout.write(line)
 +
@@ -245,7 +245,7 @@
 +test_file = FROMDIR / 'perf_blocksize.txt'
 +with open(test_file, 'w', encoding='utf-8') as f:
 +    for i in range(100000):
-+        f.write(f"Line {i}: Test content with UTF-8 Ñoño España\n")
++        f.write(f"Line {i}: Test content with UTF-8 \u00d1o\u00f1o Espa\u00f1a\n")
 +
 +file_size = test_file.stat().st_size
 +print(f"Test file: {format_size(file_size)}")

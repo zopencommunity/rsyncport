@@ -1,5 +1,5 @@
 --- /dev/null	2026-08-19 07:29:26 -0400
-+++ rsync-3.5.0/testsuite/zos-ccsid-conversion_test.py	2026-08-28 06:59:30 -0400
++++ rsync-3.5.0/testsuite/zos-ccsid-conversion_test.py	2026-08-28 07:29:21 -0400
 @@ -0,0 +1,485 @@
 +#!/usr/bin/env python3
 +# -*- coding: utf-8 -*-
@@ -76,11 +76,11 @@
 +test1_file = FROMDIR / 'test1_multibyte.txt'
 +test1_content = [
 +    "Hello World",
-+    "Spanish: Ñoño España",
-+    "Japanese: 日本語テスト",
-+    "Chinese: 中文测试",
-+    "French: Café résumé naïve",
-+    "Greek: Ελληνικά",
++    "Spanish: \u00d1o\u00f1o Espa\u00f1a",
++    "Japanese: \u65e5\u672c\u8a9e\u30c6\u30b9\u30c8",
++    "Chinese: \u4e2d\u6587\u6d4b\u8bd5",
++    "French: Caf\u00e9 r\u00e9sum\u00e9 na\u00efve",
++    "Greek: \u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac",
 +]
 +
 +test1_file.write_text('\n'.join(test1_content) + '\n', encoding='utf-8')
@@ -135,7 +135,7 @@
 +test2_file = FROMDIR / 'test2_large.txt'
 +test2_lines = []
 +for i in range(10000):
-+    test2_lines.append(f"Line {i}: Español 日本語 中文 Café 😀")
++    test2_lines.append(f"Line {i}: Espa\u00f1ol \u65e5\u672c\u8a9e \u4e2d\u6587 Caf\u00e9 \U0001f600")
 +
 +test2_file.write_text('\n'.join(test2_lines) + '\n', encoding='utf-8')
 +subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test2_file)], check=True)
@@ -193,7 +193,7 @@
 +# Change only line 2, rest should be matched blocks
 +test3_modified = [
 +    "Line 1: Original content",
-+    "Line 2: Modified with UTF-8 Ñoño España 日本語",
++    "Line 2: Modified with UTF-8 \u00d1o\u00f1o Espa\u00f1a \u65e5\u672c\u8a9e",
 +    "Line 3: Unchanged data",
 +    "Line 4: More original",
 +    "Line 5: Final original",
@@ -406,7 +406,7 @@
 +test7_modified = []
 +for i in range(1000):
 +    if i % 100 == 0:
-+        test7_modified.append(f"Modified: Block {i} with UTF-8 Ñoño")
++        test7_modified.append(f"Modified: Block {i} with UTF-8 \u00d1o\u00f1o")
 +    else:
 +        test7_modified.append(f"Block {i}: Standard text content")
 +
@@ -457,11 +457,11 @@
 +print("=" * 70)
 +
 +# Create file with UTF-8 filename
-+test8_file = FROMDIR / 'café_españa.txt'
-+test8_file.write_text("Content with UTF-8: Ñoño\n", encoding='utf-8')
++test8_file = FROMDIR / 'caf\u00e9_espa\u00f1a.txt'
++test8_file.write_text("Content with UTF-8: \u00d1o\u00f1o\n", encoding='utf-8')
 +subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test8_file)], check=True)
 +
-+dest8 = TODIR / 'café_españa.txt'
++dest8 = TODIR / 'caf\u00e9_espa\u00f1a.txt'
 +result = run_rsync('-av', '--zos-tags', str(test8_file), str(dest8), check=False)
 +
 +if result.returncode == 0 and dest8.exists():
@@ -474,15 +474,15 @@
 +print("ALL TESTS COMPLETED SUCCESSFULLY")
 +print("=" * 70)
 +print("\nSummary:")
-+print("  ✓ Test 1: Multibyte UTF-8 across block boundaries")
-+print("  ✓ Test 2: Large file with multibyte content")
-+print("  ✓ Test 3: Delta transfer with matched blocks")
-+print("  ✓ Test 4: Invalid UTF-8 correctly rejected")
-+print("  ✓ Test 5: IBM-1047 newline handling")
-+print("  ✓ Test 6: Empty and ASCII-only files")
-+print("  ✓ Test 7: Complex delta with patterns")
-+print("  ✓ Test 8: Non-ASCII filenames")
++print("  [PASS] Test 1: Multibyte UTF-8 across block boundaries")
++print("  [PASS] Test 2: Large file with multibyte content")
++print("  [PASS] Test 3: Delta transfer with matched blocks")
++print("  [PASS] Test 4: Invalid UTF-8 correctly rejected")
++print("  [PASS] Test 5: IBM-1047 newline handling")
++print("  [PASS] Test 6: Empty and ASCII-only files")
++print("  [PASS] Test 7: Complex delta with patterns")
++print("  [PASS] Test 8: Non-ASCII filenames")
 +print("\nCritical issues verified fixed:")
-+print("  ✓ Issue #2: Multibyte sequences safe across boundaries")
-+print("  ✓ Issue #4: No silent conversion failures")
-+print("  ✓ Issue #5: Matched blocks converted correctly")
++print("  [PASS] Issue #2: Multibyte sequences safe across boundaries")
++print("  [PASS] Issue #4: No silent conversion failures")
++print("  [PASS] Issue #5: Matched blocks converted correctly")

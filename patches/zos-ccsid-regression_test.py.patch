@@ -1,5 +1,5 @@
 --- /dev/null	2026-08-19 07:29:26 -0400
-+++ rsync-3.5.0/testsuite/zos-ccsid-regression_test.py	2026-08-28 06:59:38 -0400
++++ rsync-3.5.0/testsuite/zos-ccsid-regression_test.py	2026-08-28 07:29:21 -0400
 @@ -0,0 +1,396 @@
 +#!/usr/bin/env python3
 +# -*- coding: utf-8 -*-
@@ -93,7 +93,7 @@
 +
 +# Test with CCSID 1208 (UTF-8)
 +test3b = FROMDIR / 'regress3_utf8.txt'
-+test3b.write_text("UTF-8 text with Ñoño\n", encoding='utf-8')
++test3b.write_text("UTF-8 text with \u00d1o\u00f1o\n", encoding='utf-8')
 +subprocess.run(['chtag', '-t', '-c', '1208', str(test3b)], check=True)
 +
 +dest3b = TODIR / 'regress3_utf8.txt'
@@ -383,17 +383,17 @@
 +print("ALL REGRESSION TESTS PASSED")
 +print("=" * 70)
 +print("\nVerified functionality:")
-+print("  ✓ Basic transfers without --zos-tags")
-+print("  ✓ --no-zos-tags option")
-+print("  ✓ ASCII/UTF-8 files bypass conversion")
-+print("  ✓ Binary files")
-+print("  ✓ Directories and symlinks")
-+print("  ✓ --inplace option")
-+print("  ✓ --append option")
-+print("  ✓ --checksum option")
-+print("  ✓ --whole-file option")
-+print("  ✓ Compression (-z)")
-+print("  ✓ --delete option")
-+print("  ✓ Dry run (-n)")
-+print("  ✓ Sparse files")
++print("  [PASS] Basic transfers without --zos-tags")
++print("  [PASS] --no-zos-tags option")
++print("  [PASS] ASCII/UTF-8 files bypass conversion")
++print("  [PASS] Binary files")
++print("  [PASS] Directories and symlinks")
++print("  [PASS] --inplace option")
++print("  [PASS] --append option")
++print("  [PASS] --checksum option")
++print("  [PASS] --whole-file option")
++print("  [PASS] Compression (-z)")
++print("  [PASS] --delete option")
++print("  [PASS] Dry run (-n)")
++print("  [PASS] Sparse files")
 +print("\nNo regressions detected in existing functionality")
