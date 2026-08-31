@@ -17,9 +17,9 @@ if [ "$1" = "--check-only" ]; then
     RSYNC_DIR="${2:-../rsync-3.5.0}"
 fi
 
-echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║     z/OS rsync CCSID Conversion Fixes - Patch Application Tool      ║"
-echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo "ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
+echo "â     z/OS rsync CCSID Conversion Fixes - Patch Application Tool      â"
+echo "ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo
 
 # Verify we're in the right place
@@ -48,38 +48,38 @@ PATCHES=(
 
 # Check mode - verify patches without applying
 if [ $CHECK_ONLY -eq 1 ]; then
-    echo "═══════════════════════════════════════════════════════════════════"
+    echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
     echo "  CHECK MODE - Verifying patches (not applying)"
-    echo "═══════════════════════════════════════════════════════════════════"
+    echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
     echo
     
     FAILURES=0
     for patch in "${PATCHES[@]}"; do
         patch_file="$SCRIPT_DIR/$patch"
         if [ ! -f "$patch_file" ]; then
-            echo "✗ MISSING: $patch"
+            echo "â MISSING: $patch"
             FAILURES=$((FAILURES + 1))
             continue
         fi
         
         printf "Checking %-50s ... " "$patch"
         if patch -p1 --dry-run --silent < "$patch_file" 2>/dev/null; then
-            echo "✓ OK"
+            echo "â OK"
         else
-            echo "✗ FAIL"
+            echo "â FAIL"
             FAILURES=$((FAILURES + 1))
         fi
     done
     
     echo
     if [ $FAILURES -eq 0 ]; then
-        echo "✓ All patches can be applied cleanly"
+        echo "â All patches can be applied cleanly"
         echo
         echo "To apply patches, run:"
         echo "  $0 $RSYNC_DIR"
         exit 0
     else
-        echo "✗ $FAILURES patch(es) failed verification"
+        echo "â $FAILURES patch(es) failed verification"
         echo
         echo "Possible causes:"
         echo "  - Patches already applied"
@@ -90,9 +90,9 @@ if [ $CHECK_ONLY -eq 1 ]; then
 fi
 
 # Apply mode
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Applying patches..."
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo
 
 APPLIED=0
@@ -102,7 +102,7 @@ for patch in "${PATCHES[@]}"; do
     patch_file="$SCRIPT_DIR/$patch"
     
     if [ ! -f "$patch_file" ]; then
-        echo "✗ ERROR: Patch file not found: $patch"
+        echo "â ERROR: Patch file not found: $patch"
         FAILED=$((FAILED + 1))
         continue
     fi
@@ -110,10 +110,10 @@ for patch in "${PATCHES[@]}"; do
     printf "Applying %-50s ... " "$patch"
     
     if patch -p1 < "$patch_file" > /tmp/patch.$$.log 2>&1; then
-        echo "✓"
+        echo "â"
         APPLIED=$((APPLIED + 1))
     else
-        echo "✗ FAILED"
+        echo "â FAILED"
         echo "  Error details:"
         cat /tmp/patch.$$.log | sed 's/^/    /'
         FAILED=$((FAILED + 1))
@@ -133,23 +133,23 @@ done
 rm -f /tmp/patch.$$.log
 
 echo
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Patch Application Summary"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Applied: $APPLIED"
 echo "  Failed:  $FAILED"
 echo "  Total:   ${#PATCHES[@]}"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 
 if [ $FAILED -eq 0 ]; then
     echo
-    echo "✓ All patches applied successfully!"
+    echo "â All patches applied successfully!"
     echo
     
     # Set executable permissions on test runner
     if [ -f "testsuite/run-ccsid-tests.sh" ]; then
         chmod +x testsuite/run-ccsid-tests.sh
-        echo "✓ Set executable permission on run-ccsid-tests.sh"
+        echo "â Set executable permission on run-ccsid-tests.sh"
     fi
     
     echo
@@ -161,7 +161,7 @@ if [ $FAILED -eq 0 ]; then
     exit 0
 else
     echo
-    echo "✗ Some patches failed to apply"
+    echo "â Some patches failed to apply"
     echo
     echo "Check for .rej files:"
     echo "  find . -name '*.rej'"
