@@ -1,0 +1,23 @@
+diff --git a/testsuite/relative_test.py b/testsuite/relative_test.py
+index 123189c..259de2c 100644
+--- a/testsuite/relative_test.py
++++ b/testsuite/relative_test.py
+@@ -7,6 +7,7 @@
+ # combination of an -R-anchored arg with an absolute "extra" path.
+ 
+ import os
++import platform
+ import subprocess
+ import time
+ 
+@@ -16,6 +17,10 @@ from rsyncfns import (
+     run_rsync, test_fail,
+ )
+ 
++if platform.system() == 'OS/390':
++    import rsyncfns
++    rsyncfns.RSYNC += ' --no-zos-tags'
++
+ 
+ deepstr = 'down/3/deep'
+ deepdir = FROMDIR / deepstr

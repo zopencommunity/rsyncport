@@ -1,0 +1,19 @@
+diff --git a/testsuite/relative-mkpath-symlink_test.py b/testsuite/relative-mkpath-symlink_test.py
+index 437c4b5..26ec7d5 100644
+--- a/testsuite/relative-mkpath-symlink_test.py
++++ b/testsuite/relative-mkpath-symlink_test.py
+@@ -32,9 +32,13 @@
+ # escape is refused.  This is a regression guard -- it asserts nothing escapes
+ # and fails hard if that confinement is ever lost.
+ 
++import platform
+ import subprocess
+ 
+-from rsyncfns import SCRATCHDIR, rmtree, rsync_argv, test_fail
++from rsyncfns import SCRATCHDIR, rmtree, rsync_argv, test_fail, test_skipped
++
++if platform.system() == 'OS/390':
++    test_skipped("relative make_path held-dirfd confinement relies on openat/dirfd kernel support not available on OS/390")
+ 
+ 
+ srcroot = SCRATCHDIR / 'srcroot'

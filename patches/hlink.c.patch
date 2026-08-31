@@ -1,0 +1,67 @@
+diff --git a/hlink.c b/hlink.c
+index 2e84b49..6bc9a71 100644
+--- a/hlink.c
++++ b/hlink.c
+@@ -24,6 +24,10 @@
+ #include "inums.h"
+ #include "ifuncs.h"
+ 
++#ifdef __MVS__
++#include <fcntl.h>
++#endif
++
+ extern int dry_run;
+ extern int list_only;
+ extern int am_sender;
+@@ -39,6 +43,10 @@ extern int maybe_ATTRS_REPORT;
+ extern int unsort_ndx;
+ extern char *basis_dir[MAX_BASIS_DIRS+1];
+ extern struct file_list *cur_flist;
++#ifdef __MVS__
++extern int preserve_zos_tags;
++extern int zos_tags_ndx;
++#endif
+ 
+ #ifdef SUPPORT_HARD_LINKS
+ 
+@@ -488,6 +496,40 @@ int hard_link_one(struct file_struct *file, const char *fname,
+ 		return 0;
+ 	}
+ 
++#ifdef __MVS__
++	/* On z/OS, hardlinks don't automatically inherit file tags (CCSID and txtflag).
++	 * After creating the hardlink, explicitly copy both tags from the source file.
++	 * Use __chattr() which properly handles both CCSID and txtflag, unlike
++	 * __chgpathccsid() which only sets CCSID. */
++	if (preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
++		unsigned short source_ccsid = F_ZOS_CCSID(file);
++		unsigned int source_txtflag = F_ZOS_TXTFLAG(file);
++		
++		if (DEBUG_GTE(HLINK, 1))
++			rprintf(FINFO, "[DEBUG] hard_link_one: %s -> %s, ccsid=%u, txtflag=%u\n",
++				fname, oldname, source_ccsid, source_txtflag);
++		
++		/* Only set tags if CCSID is valid */
++		if (source_ccsid > 0 && source_ccsid != 0xFFFF) {
++			attrib_t attr;
++			memset(&attr, 0, sizeof(attr));
++			attr.att_filetagchg = 1;
++			attr.att_filetag.ft_ccsid = source_ccsid;
++			attr.att_filetag.ft_txtflag = source_txtflag;
++			
++			if (__chattr(fname, &attr, sizeof(attr)) != 0) {
++				/* Tag setting failed - this is an error, not just debug info */
++				rsyserr(FERROR_XFER, errno,
++					"failed to set z/OS tags (ccsid=%u, txtflag=%u) on hardlink %s",
++					source_ccsid, source_txtflag, full_fname(fname));
++				/* Continue anyway - the hardlink was created, just without proper tags */
++			} else if (DEBUG_GTE(HLINK, 1)) {
++				rprintf(FINFO, "[DEBUG] Successfully set z/OS tags on hardlink %s\n", fname);
++			}
++		}
++	}
++#endif
++
+ 	file->flags |= FLAG_HLINK_DONE;
+ 
+ 	return 1;

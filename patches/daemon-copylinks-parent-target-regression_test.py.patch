@@ -1,0 +1,23 @@
+diff --git a/testsuite/daemon-copylinks-parent-target-regression_test.py b/testsuite/daemon-copylinks-parent-target-regression_test.py
+index b0cb6fb..2ed0628 100644
+--- a/testsuite/daemon-copylinks-parent-target-regression_test.py
++++ b/testsuite/daemon-copylinks-parent-target-regression_test.py
+@@ -2,6 +2,7 @@
+ """Daemon --copy-links must follow a safe parent-relative symlink target."""
+ 
+ import os
++import platform
+ 
+ from rsyncfns import (
+     SCRATCHDIR, forced_protocol, makepath, rmtree, test_fail, test_skipped,
+@@ -9,6 +10,10 @@ from rsyncfns import (
+ )
+ from stdio_daemon import finish_stdio_daemon, start_stdio_daemon
+ 
++if platform.system() == 'OS/390':
++    # stdio_daemon and dirfd-based parent link dereference are unsupported on OS/390
++    test_skipped("stdio_daemon socketpair and dirfd parent links unsupported on OS/390")
++
+ # The hand-rolled client below speaks protocol 30 and greets with it, so a run
+ # that pins the daemon lower cannot complete the handshake and just times out.
+ # The behaviour under test is not protocol-specific -- the sibling

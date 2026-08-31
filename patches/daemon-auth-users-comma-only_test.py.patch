@@ -1,0 +1,23 @@
+diff --git a/testsuite/daemon-auth-users-comma-only_test.py b/testsuite/daemon-auth-users-comma-only_test.py
+index 479da53..1bb13bd 100644
+--- a/testsuite/daemon-auth-users-comma-only_test.py
++++ b/testsuite/daemon-auth-users-comma-only_test.py
+@@ -42,13 +42,17 @@ because a client is told only "auth failed" for every server-side reason alike.
+ """
+ 
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+     SCRATCHDIR, makepath, rmtree, rsync_argv, start_test_daemon, test_fail,
+-    write_daemon_conf,
++    test_skipped, write_daemon_conf,
+ )
+ 
++if platform.system() == 'OS/390':
++    test_skipped("@group daemon-auth is not supported on OS/390 (getgrouplist not available)")
++
+ PORT = 12949
+ USER = 'authuser'
+ PASSWORD = 'known-password'

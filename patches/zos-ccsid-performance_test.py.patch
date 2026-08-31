@@ -1,0 +1,298 @@
+--- /dev/null	2026-08-19 07:29:26 -0400
++++ rsync-3.5.0/testsuite/zos-ccsid-performance_test.py	2026-08-28 07:29:34 -0400
+@@ -0,0 +1,295 @@
++#!/usr/bin/env python3
++# -*- coding: utf-8 -*-
++# Performance tests for z/OS CCSID conversion
++# Measures overhead and throughput
++
++import os
++import platform
++import shutil
++import subprocess
++import time
++
++from rsyncfns import (
++    FROMDIR, RSYNC, SCRATCHDIR, TODIR,
++    makepath, run_rsync, test_skipped,
++)
++
++if platform.system() != 'OS/390':
++    test_skipped("Skipping z/OS CCSID performance test on non-z/OS system")
++
++if shutil.which('chtag') is None:
++    test_skipped("Skipping z/OS CCSID performance test: chtag command not found")
++
++
++def format_time(seconds):
++    """Format time in ms or seconds."""
++    if seconds < 1:
++        return f"{seconds*1000:.1f}ms"
++    return f"{seconds:.2f}s"
++
++
++def format_size(bytes):
++    """Format file size."""
++    if bytes < 1024:
++        return f"{bytes}B"
++    elif bytes < 1024*1024:
++        return f"{bytes/1024:.1f}KB"
++    else:
++        return f"{bytes/(1024*1024):.1f}MB"
++
++
++def measure_transfer(src, dest, description, iterations=3):
++    """Measure transfer time over multiple iterations."""
++    times = []
++    
++    for i in range(iterations):
++        if dest.exists():
++            dest.unlink()
++        
++        start = time.time()
++        result = run_rsync('-av', '--zos-tags', str(src), str(dest), check=False)
++        elapsed = time.time() - start
++        
++        if result.returncode != 0:
++            print(f"  Iteration {i+1}: FAILED")
++            return None
++        
++        times.append(elapsed)
++        print(f"  Iteration {i+1}: {format_time(elapsed)}")
++    
++    avg_time = sum(times) / len(times)
++    min_time = min(times)
++    max_time = max(times)
++    
++    return {
++        'avg': avg_time,
++        'min': min_time,
++        'max': max_time,
++        'times': times
++    }
++
++
++makepath(FROMDIR, TODIR)
++
++print("=" * 70)
++print("PERFORMANCE TEST 1: Conversion Overhead")
++print("=" * 70)
++
++# Create 10MB ASCII-only file (no conversion needed)
++print("\n1.1: Creating 10MB ASCII-only file...")
++ascii_file = FROMDIR / 'perf_ascii_10mb.txt'
++with open(ascii_file, 'w') as f:
++    for i in range(500000):  # ~10MB
++        f.write(f"Line {i}: This is ASCII-only text for performance testing\n")
++
++file_size = ascii_file.stat().st_size
++print(f"Created: {format_size(file_size)}")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(ascii_file)], check=True)
++
++print("\n1.1: Transferring ASCII-only file (no conversion)...")
++ascii_dest = TODIR / 'perf_ascii_10mb.txt'
++ascii_result = measure_transfer(ascii_file, ascii_dest, "ASCII-only", iterations=3)
++
++if ascii_result:
++    print(f"\nASCII-only results:")
++    print(f"  Average: {format_time(ascii_result['avg'])}")
++    print(f"  Min: {format_time(ascii_result['min'])}")
++    print(f"  Max: {format_time(ascii_result['max'])}")
++    print(f"  Throughput: {format_size(file_size/ascii_result['avg'])}/s")
++
++# Create 10MB file with mixed ASCII/UTF-8 (requires conversion)
++print("\n1.2: Creating 10MB mixed ASCII/UTF-8 file...")
++mixed_file = FROMDIR / 'perf_mixed_10mb.txt'
++with open(mixed_file, 'w', encoding='utf-8') as f:
++    for i in range(500000):
++        # Every 10th line has UTF-8
++        if i % 10 == 0:
++            f.write(f"Line {i}: UTF-8 content \u00d1o\u00f1o Espa\u00f1a \u65e5\u672c\u8a9e\n")
++        else:
++            f.write(f"Line {i}: This is ASCII-only text for performance testing\n")
++
++file_size = mixed_file.stat().st_size
++print(f"Created: {format_size(file_size)}")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(mixed_file)], check=True)
++
++print("\n1.2: Transferring mixed ASCII/UTF-8 file (with conversion)...")
++mixed_dest = TODIR / 'perf_mixed_10mb.txt'
++mixed_result = measure_transfer(mixed_file, mixed_dest, "Mixed UTF-8", iterations=3)
++
++if mixed_result:
++    print(f"\nMixed UTF-8 results:")
++    print(f"  Average: {format_time(mixed_result['avg'])}")
++    print(f"  Min: {format_time(mixed_result['min'])}")
++    print(f"  Max: {format_time(mixed_result['max'])}")
++    print(f"  Throughput: {format_size(file_size/mixed_result['avg'])}/s")
++
++# Calculate overhead
++if ascii_result and mixed_result:
++    overhead = ((mixed_result['avg'] - ascii_result['avg']) / ascii_result['avg']) * 100
++    print(f"\n1.3: Conversion overhead: {overhead:.1f}%")
++    
++    if overhead > 50:
++        print(f"WARNING: Overhead is {overhead:.1f}%, higher than expected (<20%)")
++    elif overhead > 20:
++        print(f"NOTICE: Overhead is {overhead:.1f}%, acceptable but could be optimized")
++    else:
++        print(f"PASS: Overhead is {overhead:.1f}%, well within acceptable range")
++
++
++print("\n" + "=" * 70)
++print("PERFORMANCE TEST 2: Large File Throughput")
++print("=" * 70)
++
++# Create 100MB file with UTF-8 content
++print("\n2.1: Creating 100MB file with UTF-8 content...")
++large_file = FROMDIR / 'perf_large_100mb.txt'
++lines_written = 0
++
++with open(large_file, 'w', encoding='utf-8') as f:
++    target_size = 100 * 1024 * 1024  # 100MB
++    while large_file.stat().st_size < target_size:
++        f.write(f"Line {lines_written}: Test with UTF-8 \u00d1o\u00f1o Espa\u00f1a \u65e5\u672c\u8a9e \u4e2d\u6587\n")
++        lines_written += 1
++
++file_size = large_file.stat().st_size
++print(f"Created: {format_size(file_size)} ({lines_written} lines)")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(large_file)], check=True)
++
++print("\n2.1: Transferring 100MB file...")
++large_dest = TODIR / 'perf_large_100mb.txt'
++large_result = measure_transfer(large_file, large_dest, "100MB file", iterations=1)
++
++if large_result:
++    print(f"\n100MB file results:")
++    print(f"  Time: {format_time(large_result['avg'])}")
++    print(f"  Throughput: {format_size(file_size/large_result['avg'])}/s")
++    
++    # Verify line count
++    with open(large_dest, 'r', encoding='latin-1') as f:
++        dest_lines = sum(1 for _ in f)
++    
++    print(f"  Lines transferred: {dest_lines} of {lines_written}")
++    
++    if dest_lines != lines_written:
++        print(f"ERROR: Line count mismatch!")
++    else:
++        print(f"  Verification: PASS")
++
++
++print("\n" + "=" * 70)
++print("PERFORMANCE TEST 3: Delta Transfer Efficiency")
++print("=" * 70)
++
++# Create 50MB base file
++print("\n3.1: Creating 50MB base file...")
++delta_base = FROMDIR / 'perf_delta_base.txt'
++with open(delta_base, 'w', encoding='utf-8') as f:
++    for i in range(2500000):
++        f.write(f"Line {i}: Base content for delta testing\n")
++
++file_size = delta_base.stat().st_size
++print(f"Created: {format_size(file_size)}")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(delta_base)], check=True)
++
++# Initial transfer
++delta_dest = TODIR / 'perf_delta.txt'
++print("\n3.2: Initial transfer...")
++start = time.time()
++run_rsync('-av', '--zos-tags', str(delta_base), str(delta_dest), check=True)
++initial_time = time.time() - start
++print(f"  Time: {format_time(initial_time)}")
++
++# Modify 1% of lines (every 100th line)
++print("\n3.3: Creating modified version (1% change)...")
++delta_mod = SCRATCHDIR / 'perf_delta_modified.txt'
++with open(delta_base, 'r', encoding='utf-8') as fin:
++    with open(delta_mod, 'w', encoding='utf-8') as fout:
++        for i, line in enumerate(fin):
++            if i % 100 == 0:
++                fout.write(f"Line {i}: MODIFIED with UTF-8 \u00d1o\u00f1o\n")
++            else:
++                fout.write(line)
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(delta_mod)], check=True)
++
++# Delta transfer
++print("\n3.4: Delta transfer (1% changed)...")
++start = time.time()
++result = run_rsync('-av', '--zos-tags', str(delta_mod), str(delta_dest), check=False)
++delta_time = time.time() - start
++
++if result.returncode == 0:
++    print(f"  Time: {format_time(delta_time)}")
++    
++    speedup = initial_time / delta_time
++    print(f"  Speedup vs full transfer: {speedup:.1f}x")
++    
++    if speedup < 2:
++        print(f"WARNING: Delta transfer only {speedup:.1f}x faster (expected >2x)")
++    else:
++        print(f"PASS: Delta transfer {speedup:.1f}x faster")
++
++
++print("\n" + "=" * 70)
++print("PERFORMANCE TEST 4: Block Size Impact")
++print("=" * 70)
++
++# Test various block sizes
++test_file = FROMDIR / 'perf_blocksize.txt'
++with open(test_file, 'w', encoding='utf-8') as f:
++    for i in range(100000):
++        f.write(f"Line {i}: Test content with UTF-8 \u00d1o\u00f1o Espa\u00f1a\n")
++
++file_size = test_file.stat().st_size
++print(f"Test file: {format_size(file_size)}")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test_file)], check=True)
++
++block_sizes = [512, 2048, 8192, 32768]
++results = {}
++
++for block_size in block_sizes:
++    print(f"\n4.{block_size}: Block size {block_size}...")
++    dest = TODIR / f'perf_block{block_size}.txt'
++    
++    start = time.time()
++    result = run_rsync(
++        '-av', f'--block-size={block_size}', '--zos-tags',
++        str(test_file), str(dest),
++        check=False
++    )
++    elapsed = time.time() - start
++    
++    if result.returncode == 0:
++        print(f"  Time: {format_time(elapsed)}")
++        print(f"  Throughput: {format_size(file_size/elapsed)}/s")
++        results[block_size] = elapsed
++
++if results:
++    fastest = min(results, key=results.get)
++    print(f"\n4.5: Fastest block size: {fastest} ({format_time(results[fastest])})")
++
++
++print("\n" + "=" * 70)
++print("PERFORMANCE SUMMARY")
++print("=" * 70)
++
++if ascii_result and mixed_result:
++    overhead = ((mixed_result['avg'] - ascii_result['avg']) / ascii_result['avg']) * 100
++    print(f"Conversion overhead: {overhead:.1f}%")
++    print(f"  ASCII-only:  {format_time(ascii_result['avg'])} ({format_size(10*1024*1024/ascii_result['avg'])}/s)")
++    print(f"  Mixed UTF-8: {format_time(mixed_result['avg'])} ({format_size(10*1024*1024/mixed_result['avg'])}/s)")
++
++if large_result:
++    print(f"\nLarge file (100MB): {format_time(large_result['avg'])}")
++    print(f"  Throughput: {format_size(100*1024*1024/large_result['avg'])}/s")
++
++print("\nPerformance tests complete.")
++print("\nAcceptable ranges:")
++print("  Conversion overhead: <20% (warning at >50%)")
++print("  100MB throughput: >10MB/s on local disk")
++print("  Delta speedup: >2x for 1% changes")

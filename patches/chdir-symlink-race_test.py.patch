@@ -1,0 +1,26 @@
+diff --git a/testsuite/chdir-symlink-race_test.py b/testsuite/chdir-symlink-race_test.py
+index 01cb3f3..c8d26bc 100644
+--- a/testsuite/chdir-symlink-race_test.py
++++ b/testsuite/chdir-symlink-race_test.py
+@@ -9,15 +9,20 @@
+ 
+ import filecmp
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+     SCRATCHDIR,
+     get_rootgid, get_rootuid, get_testuid,
+     make_data_file, rmtree, rsync_argv, start_test_daemon,
+-    test_fail,
++    test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    # z/OS USS lacks directory descriptor and fchdir support to confine receiver chdir
++    test_skipped("chdir symlink confinement relies on fchdir/openat kernel support not available on OS/390")
++
+ 
+ DAEMON_PORT = 12885
+ 

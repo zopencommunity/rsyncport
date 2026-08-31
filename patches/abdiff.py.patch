@@ -1,0 +1,16 @@
+diff --git a/testsuite/abdiff.py b/testsuite/abdiff.py
+index 06bfa48..69d7d7f 100644
+--- a/testsuite/abdiff.py
++++ b/testsuite/abdiff.py
+@@ -1835,7 +1835,10 @@ def typetrans_sweep():
+ 
+     def d_link(dest: Path):
+         os.symlink("keep", dest / "x")
+-        os.utime(dest / "x", (T_NEWER, T_NEWER), follow_symlinks=False)
++        try:
++            os.utime(dest / "x", (T_NEWER, T_NEWER), follow_symlinks=False)
++        except (NotImplementedError, OSError):
++            pass
+ 
+     def d_fifo(dest: Path):
+         _mk_fifo(dest / "x")

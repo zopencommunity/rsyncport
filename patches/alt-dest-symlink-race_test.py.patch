@@ -1,0 +1,26 @@
+diff --git a/testsuite/alt-dest-symlink-race_test.py b/testsuite/alt-dest-symlink-race_test.py
+index fc83c57..3e26009 100644
+--- a/testsuite/alt-dest-symlink-race_test.py
++++ b/testsuite/alt-dest-symlink-race_test.py
+@@ -17,14 +17,20 @@
+ # doesn't.
+ 
+ import os
++import platform
+ import subprocess
+ 
+ from rsyncfns import (
+     SCRATCHDIR,
+     rsync_argv, get_testuid, get_rootuid, get_rootgid,
+-    rmtree, start_test_daemon, test_fail,
++    rmtree, start_test_daemon, test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    # z/OS USS lacks kernel support for directory file descriptors (open(O_DIRECTORY),
++    # openat, fchdir) needed for alt-dest parent symlink walk confinement.
++    test_skipped("alt-dest symlink confinement relies on dirfd/openat kernel support not available on OS/390")
++
+ 
+ DAEMON_PORT = 12882
+ 

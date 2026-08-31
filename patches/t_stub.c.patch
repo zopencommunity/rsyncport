@@ -1,0 +1,13 @@
+diff --git a/t_stub.c b/t_stub.c
+index 1518c79..11c5217 100644
+--- a/t_stub.c
++++ b/t_stub.c
+@@ -49,6 +49,8 @@ char *module_dir;
+ int module_dirfd = -1;
+ char *confine_root;
+ unsigned int confine_rootlen = 0;
++short info_levels[COUNT_INFO];
++short debug_levels[COUNT_DEBUG];
+ /* curr_dir[]/curr_dir_len (read by secure_relative_open) are defined in
+  * syscall.c, which every helper links -- no stub needed here. */
+ filter_rule_list daemon_filter_list;

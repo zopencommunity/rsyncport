@@ -1,0 +1,19 @@
+diff --git a/testsuite/chmod-symlink-race_test.py b/testsuite/chmod-symlink-race_test.py
+index 430442d..e5663e1 100644
+--- a/testsuite/chmod-symlink-race_test.py
++++ b/testsuite/chmod-symlink-race_test.py
+@@ -15,10 +15,13 @@
+ # from Python too, in case the helper's internal stat() ever drifts.
+ 
+ import os
++import platform
+ import subprocess
+ 
+-from rsyncfns import SCRATCHDIR, TOOLDIR, rmtree, test_fail
++from rsyncfns import SCRATCHDIR, TOOLDIR, rmtree, test_fail, test_skipped
+ 
++if platform.system() == 'OS/390':
++    test_skipped("do_chmod_at relies on openat/AT_FDCWD kernel support not available on OS/390")
+ 
+ mod = SCRATCHDIR / 'module'
+ trap_outside = SCRATCHDIR / 'trap'

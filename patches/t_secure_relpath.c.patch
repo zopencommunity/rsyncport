@@ -1,5 +1,5 @@
 diff --git a/t_secure_relpath.c b/t_secure_relpath.c
-index a0fdf0d..975af0c 100644
+index d20570d..d4fabf0 100644
 --- a/t_secure_relpath.c
 +++ b/t_secure_relpath.c
 @@ -26,6 +26,12 @@

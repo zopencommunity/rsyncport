@@ -1,0 +1,85 @@
+diff --git a/testsuite/zos-mode_test.py b/testsuite/zos-mode_test.py
+new file mode 100644
+index 0000000..b6b4acd
+--- /dev/null
++++ b/testsuite/zos-mode_test.py
+@@ -0,0 +1,79 @@
++#!/usr/bin/env python3
++# Test rsync preservation of modes on z/OS, ensuring conversion between
++# Linux-style modes and z/OS-style modes works correctly.
++
++import os
++import platform
++import stat
++import subprocess
++
++from rsyncfns import (
++    FROMDIR, TODIR, makepath, run_rsync, test_fail, test_skipped,
++)
++
++if platform.system() != 'OS/390':
++    test_skipped("Skipping z/OS mode test on non-z/OS system")
++
++makepath(FROMDIR, TODIR)
++
++# Create different types of files
++test_file = FROMDIR / 'file'
++test_dir = FROMDIR / 'dir'
++test_link = FROMDIR / 'link'
++
++test_file.write_text("regular file\n")
++os.chmod(test_file, 0o644)
++
++test_dir.mkdir(parents=True, exist_ok=True)
++os.chmod(test_dir, 0o755)
++
++if test_link.is_symlink() or test_link.exists():
++    test_link.unlink()
++os.symlink('file', test_link)
++
++# Test 1: Preserve modes
++run_rsync('-av', f'{FROMDIR}/', f'{TODIR}/', check=True)
++if not (TODIR / 'file').is_file():
++    test_fail("Test 1: todir/file not found")
++if not (TODIR / 'dir').is_dir():
++    test_fail("Test 1: todir/dir not found")
++if not (TODIR / 'link').is_symlink():
++    test_fail("Test 1: todir/link not found")
++
++file_mode = stat.S_IMODE((TODIR / 'file').stat().st_mode)
++if file_mode != 0o644:
++    test_fail(f"Test 1: todir/file mode is {oct(file_mode)}, expected 0o644")
++
++dir_mode = stat.S_IMODE((TODIR / 'dir').stat().st_mode)
++if dir_mode != 0o755:
++    test_fail(f"Test 1: todir/dir mode is {oct(dir_mode)}, expected 0o755")
++
++# Test 2: Mode update
++os.chmod(test_file, 0o700)
++run_rsync('-av', f'{FROMDIR}/', f'{TODIR}/', check=True)
++file_mode = stat.S_IMODE((TODIR / 'file').stat().st_mode)
++if file_mode != 0o700:
++    test_fail(f"Test 2: todir/file mode is {oct(file_mode)}, expected 0o700")
++
++# Test 3: SUID/SGID bits
++try:
++    os.chmod(test_file, 0o6755)
++    actual_set = stat.S_IMODE(test_file.stat().st_mode)
++    if actual_set == 0o6755:
++        run_rsync('-av', f'{FROMDIR}/', f'{TODIR}/', check=True)
++        dst_mode = stat.S_IMODE((TODIR / 'file').stat().st_mode)
++        if dst_mode != 0o6755:
++            test_fail(f"Test 3: todir/file mode is {oct(dst_mode)}, expected 0o6755")
++    else:
++        print(f"Skipping SUID/SGID bit test: cannot set bits on {test_file}")
++except OSError:
++    print(f"Skipping SUID/SGID bit test: cannot set bits on {test_file}")
++
++# Test 4: Sticky bit
++sticky_dir = FROMDIR / 'sticky'
++sticky_dir.mkdir(parents=True, exist_ok=True)
++os.chmod(sticky_dir, 0o1777)
++run_rsync('-av', f'{FROMDIR}/', f'{TODIR}/', check=True)
++sticky_mode = stat.S_IMODE((TODIR / 'sticky').stat().st_mode)
++if sticky_mode != 0o1777:
++    test_fail(f"Test 4: todir/sticky mode is {oct(sticky_mode)}, expected 0o1777")

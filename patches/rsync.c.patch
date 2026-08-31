@@ -1,8 +1,8 @@
 diff --git a/rsync.c b/rsync.c
-index b130aba..0693116 100644
+index 19a371d..a984d7f 100644
 --- a/rsync.c
 +++ b/rsync.c
-@@ -27,10 +27,18 @@
+@@ -27,10 +27,20 @@
  #include <langinfo.h>
  #endif
  
@@ -14,55 +14,68 @@ index b130aba..0693116 100644
  extern int preserve_acls;
  extern int preserve_xattrs;
  extern int preserve_perms;
++
 +#ifdef __MVS__
 +extern int preserve_zos_tags;
 +extern int zos_tags_ndx;
 +#endif
++
  extern int preserve_executability;
  extern int preserve_mtimes;
  extern int omit_dir_times;
-@@ -669,12 +677,40 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+@@ -523,6 +533,7 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+ 		int sret, sdfd;
+ 		if (dry_run)
+ 			return 1;
++		init_stat_x(&sx2);
+ 		/* Stat through the entry's held dir fd (like gen_entry_stat) so we
+ 		 * don't re-walk the full path here; link_stat_at folds in no
+ 		 * fake-super xattr, so only when am_root >= 0. */
+@@ -536,7 +547,6 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+ 				full_fname(fname));
+ 			return 0;
+ 		}
+-		init_stat_x(&sx2);
+ 		sxp = &sx2;
+ 		inherit = !preserve_perms;
+ 	} else
+@@ -820,6 +830,35 @@ int set_file_attrs(const char *fname, struct file_struct *file, stat_x *sxp,
+ 			updated |= UPDATED_MODE;
  	}
  #endif
- 
 +#ifdef __MVS__
-+	if (preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
-+		unsigned short ccsid = F_ZOS_CCSID(file);
-+		unsigned int txtflag = F_ZOS_TXTFLAG(file);
++        if (preserve_zos_tags && zos_tags_ndx && S_ISREG(file->mode)) {
++                unsigned short ccsid = F_ZOS_CCSID(file);
++                unsigned int txtflag = F_ZOS_TXTFLAG(file);
 +
-+		if (DEBUG_GTE(GENR, 2)) {
-+			rprintf(FINFO, "[DEBUG] set_file_attrs: %s (dest_ccsid=%u, source_ccsid=%u, dest_txt=%u, source_txt=%u)\n",
-+				fname, sxp->st.st_tag.ft_ccsid, ccsid, sxp->st.st_tag.ft_txtflag, txtflag);
-+		}
++                if (DEBUG_GTE(GENR, 2)) {
++                        rprintf(FINFO, "[DEBUG] set_file_attrs: %s (dest_ccsid=%u, source_ccsid=%u, dest_txt=%u, source_txt=%u)\n",
++                                fname, sxp->st.st_tag.ft_ccsid, ccsid, sxp->st.st_tag.ft_txtflag, txtflag);
++                }
 +
-+		/* Check if tags need to be updated */
-+		if (ccsid != sxp->st.st_tag.ft_ccsid || txtflag != sxp->st.st_tag.ft_txtflag) {
-+			attrib_t attr;
-+			memset(&attr, 0, sizeof(attr));
-+			attr.att_filetagchg = 1;
-+			attr.att_filetag.ft_ccsid = ccsid;
-+			attr.att_filetag.ft_txtflag = txtflag;
++                if (ccsid == 0 || ccsid == 0xFFFF)
++                        txtflag = 0;
 +
-+			if (__chattr(fname, &attr, sizeof(attr)) == 0) {
-+				updated |= UPDATED_MODE; /* Use existing flag for tracking */
-+			} else {
-+				rsyserr(FERROR_XFER, errno, "failed to set z/OS tags on %s", full_fname(fname));
-+			}
-+		}
-+	}
++                /* Check if tags need to be updated */
++                if (ccsid != sxp->st.st_tag.ft_ccsid || txtflag != sxp->st.st_tag.ft_txtflag) {
++                        attrib_t attr;
++                        memset(&attr, 0, sizeof(attr));
++                        attr.att_filetagchg = 1;
++                        attr.att_filetag.ft_ccsid = ccsid;
++                        attr.att_filetag.ft_txtflag = txtflag;
++
++                        if (__chattr(fname, &attr, sizeof(attr)) == 0) {
++                                updated |= UPDATED_MODE; /* Use existing flag for tracking */
++                        } else {
++                                rsyserr(FERROR_XFER, errno, "failed to set z/OS tags on %s", full_fname(fname));
++                        }
++                }
++        }
 +#endif
-+
+ 
  	if (INFO_GTE(NAME, 2) && flags & ATTRS_REPORT) {
  		if (updated)
- 			rprintf(FCLIENT, "%s\n", fname);
- 		else
- 			rprintf(FCLIENT, "%s is uptodate\n", fname);
- 	}
-+
-   cleanup:
- 	if (sxp == &sx2)
- 		free_stat_x(&sx2);
-@@ -820,6 +856,7 @@ struct file_list *flist_for_ndx(int ndx, const char *fatal_error_loc)
+@@ -984,6 +1023,7 @@ struct file_list *flist_for_ndx(int ndx, const char *fatal_error_loc)
  	return NULL;
  }
  
@@ -70,7 +83,7 @@ index b130aba..0693116 100644
  const char *who_am_i(void)
  {
  	if (am_starting_up)
-@@ -829,3 +866,4 @@ const char *who_am_i(void)
+@@ -993,3 +1033,4 @@ const char *who_am_i(void)
  	     : am_receiver ? "receiver"
  	     : "Receiver"; /* pre-forked receiver */
  }

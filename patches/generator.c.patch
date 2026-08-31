@@ -1,8 +1,8 @@
 diff --git a/generator.c b/generator.c
-index b56fa56..8bd7239 100644
+index 7e5ad60..7f5ceb6 100644
 --- a/generator.c
 +++ b/generator.c
-@@ -543,6 +543,12 @@ void itemize(const char *fnamecmp, struct file_struct *file, int ndx, int statre
+@@ -556,6 +556,12 @@ void itemize(const char *fnamecmp, struct file_struct *file, int ndx, int statre
  		} else if (preserve_executability
  		 && ((sxp->st.st_mode & 0111 ? 1 : 0) ^ (file->mode & 0111 ? 1 : 0)))
  			iflags |= ITEM_REPORT_PERMS;
@@ -15,7 +15,18 @@ index b56fa56..8bd7239 100644
  		if (uid_ndx && am_root && (uid_t)F_OWNER(file) != sxp->st.st_uid)
  			iflags |= ITEM_REPORT_OWNER;
  		if (gid_ndx && !(file->flags & FLAG_SKIP_GROUP) && sxp->st.st_gid != (gid_t)F_GROUP(file))
-@@ -637,8 +643,19 @@ int quick_check_ok(enum filetype ftype, const char *fn, struct file_struct *file
+@@ -631,6 +637,10 @@ int quick_check_ok(enum filetype ftype, const char *fn, struct file_struct *file
+ {
+ 	switch (ftype) {
+ 	  case FT_REG:
++		if (DEBUG_GTE(GENR, 1)) {
++			rprintf(FINFO, "[DEBUG] quick_check_ok %s: st_size=%lld, f_len=%lld, mtime_diff=%d\n",
++				fn, (long long)st->st_size, (long long)F_LENGTH(file), mtime_differs(st, file));
++		}
+ 		if (st->st_size != F_LENGTH(file))
+ 			return 0;
+ 
+@@ -650,8 +660,19 @@ int quick_check_ok(enum filetype ftype, const char *fn, struct file_struct *file
  
  		if (mtime_differs(st, file))
  			return 0;
@@ -37,7 +48,18 @@ index b56fa56..8bd7239 100644
  		break;
  	  case FT_SYMLINK: {
  #ifdef SUPPORT_LINKS
-@@ -2232,6 +2249,12 @@ void generate_files(int f_out, const char *local_name)
+@@ -1093,6 +1114,10 @@ static int try_dests_reg(struct file_struct *file, char *fname, int ndx,
+ 			best_match = j;
+ 			match_level = 2;
+ 		}
++		if (DEBUG_GTE(GENR, 1)) {
++			rprintf(FINFO, "[DEBUG] try_dests_reg %s: unchanged_attrs=%d\n",
++				cmpbuf, unchanged_attrs(cmpbuf, file, sxp));
++		}
+ 		if (unchanged_attrs(cmpbuf, file, sxp)) {
+ 			best_match = j;
+ 			match_level = 3;
+@@ -2722,6 +2747,12 @@ void generate_files(int f_out, const char *local_name)
  	int save_info_flist = info_levels[INFO_FLIST];
  	int save_info_progress = info_levels[INFO_PROGRESS];
  

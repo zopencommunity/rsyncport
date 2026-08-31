@@ -1,0 +1,31 @@
+diff --git a/testsuite/hardlinks_test.py b/testsuite/hardlinks_test.py
+index 728264f..654e0bc 100644
+--- a/testsuite/hardlinks_test.py
++++ b/testsuite/hardlinks_test.py
+@@ -8,6 +8,7 @@
+ # corner cases that have broken in the past.
+ 
+ import os
++import platform
+ import shutil
+ import subprocess
+ 
+@@ -16,6 +17,10 @@ from rsyncfns import (
+     checkit, makepath, rsync_argv, test_fail, test_skipped, rsync_path_arg, rsh_cmd,
+ )
+ 
++if platform.system() == 'OS/390':
++    import rsyncfns
++    rsyncfns.RSYNC += ' --no-zos-tags'
++
+ 
+ SSH = rsh_cmd()
+ 
+@@ -108,6 +113,6 @@ shutil.rmtree(FROMDIR, ignore_errors=True)
+ shutil.rmtree(TODIR, ignore_errors=True)
+ makepath(FROMDIR / 'sym', TODIR)
+ subprocess.run(rsync_argv('-aH', str(FROMDIR / 'sym'), str(TODIR)))
+-diff = subprocess.run(['diff', '-r', '-u', str(FROMDIR), str(TODIR)])
++diff = subprocess.run(['diff', '-r', '-u', str(FROMDIR / 'sym'), str(TODIR / 'sym')])
+ if diff.returncode != 0:
+     test_fail("solo copy of sym failed")

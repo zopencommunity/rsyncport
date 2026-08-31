@@ -1,0 +1,8 @@
+--- a/runtests.py
++++ b/runtests.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python3
++#!/usr/bin/env python
+ 
+ # Copyright (C) 2001, 2002 by Martin Pool <mbp@samba.org>
+ # Copyright (C) 2003-2022 Wayne Davison

@@ -1,0 +1,16 @@
+diff --git a/support/rrsync b/support/rrsync
+index e114570..a8f968a 100755
+--- a/support/rrsync
++++ b/support/rrsync
+@@ -135,6 +135,11 @@ long_opts = {
+ import os, sys, re, argparse, glob, socket, stat, time, subprocess
+ from argparse import RawTextHelpFormatter
+ 
++if not hasattr(os, 'O_NOFOLLOW'):
++    os.O_NOFOLLOW = 0
++if not hasattr(os, 'O_DIRECTORY'):
++    os.O_DIRECTORY = 0
++
+ # Held open across exec so rsync inherits them. Each entry pins a path
+ # validated_arg() approved; the corresponding arg passed to rsync is
+ # rewritten to /proc/self/fd/N so rsync's path resolution cannot be

@@ -1,0 +1,28 @@
+diff --git a/testsuite/daemon-include-maxconn_test.py b/testsuite/daemon-include-maxconn_test.py
+index a6fca2d..585e4df 100644
+--- a/testsuite/daemon-include-maxconn_test.py
++++ b/testsuite/daemon-include-maxconn_test.py
+@@ -12,14 +12,21 @@ Covers:
+ """
+ 
+ import subprocess
++import sys
+ 
+ from rsyncfns import (
+     SCRATCHDIR, FROMDIR,
+-    claim_ports, get_rootgid, get_rootuid, get_testuid,
++    can_bind_specific_port, claim_ports, get_rootgid, get_rootuid, get_testuid,
+     make_tree, makepath, rmtree, rsync_argv,
+-    start_test_daemon, test_fail, write_daemon_conf,
++    start_test_daemon, test_fail, test_skipped, write_daemon_conf,
+ )
+ 
++# Runtime capability check: some systems (including some z/OS configurations)
++# have security policies that restrict binding to specific ports. Test if this
++# system allows binding to specific ports before proceeding.
++if not can_bind_specific_port():
++    test_skipped("System security policy restricts binding to specific ports")
++
+ # `&include` (manage_globals=1) ]push/]pop's the global section stack, so the
+ # parent conf's root-aware `uid = 0`/`gid = 0` does NOT propagate into the
+ # fragments -- the included modules would default to `nobody` and fail to

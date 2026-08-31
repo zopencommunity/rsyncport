@@ -1,0 +1,80 @@
+--- /dev/null	2026-08-19 07:29:26 -0400
++++ rsync-3.5.0_dh_28aug/testsuite/run-ccsid-tests.sh	2026-08-28 04:13:32 -0400
+@@ -0,0 +1,77 @@
++#!/bin/bash
++# Quick test runner for z/OS CCSID conversion tests
++# Usage: ./run-ccsid-tests.sh [quick|full|performance|regression]
++
++set -e
++
++TESTSUITE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++RSYNC_DIR="$(dirname "$TESTSUITE_DIR")"
++
++cd "$RSYNC_DIR"
++
++MODE="${1:-quick}"
++
++echo "================================================================"
++echo "z/OS CCSID Conversion Test Runner"
++echo "================================================================"
++echo "Mode: $MODE"
++echo "Directory: $RSYNC_DIR"
++echo ""
++
++case "$MODE" in
++    quick)
++        echo "Running QUICK tests (core + regression)..."
++        echo "Expected time: ~10-20 minutes"
++        echo ""
++        ./runtests.py \
++            testsuite/zos-ccsid-conversion_test.py \
++            testsuite/zos-ccsid-regression_test.py
++        ;;
++    
++    full)
++        echo "Running FULL test suite (all tests)..."
++        echo "Expected time: ~30-50 minutes"
++        echo ""
++        ./runtests.py testsuite/zos-ccsid-*_test.py
++        ;;
++    
++    performance)
++        echo "Running PERFORMANCE tests only..."
++        echo "Expected time: ~15-30 minutes"
++        echo ""
++        ./runtests.py testsuite/zos-ccsid-performance_test.py
++        ;;
++    
++    regression)
++        echo "Running REGRESSION tests only..."
++        echo "Expected time: ~5-10 minutes"
++        echo ""
++        ./runtests.py testsuite/zos-ccsid-regression_test.py
++        ;;
++    
++    core)
++        echo "Running CORE tests only..."
++        echo "Expected time: ~5-10 minutes"
++        echo ""
++        ./runtests.py testsuite/zos-ccsid-conversion_test.py
++        ;;
++    
++    *)
++        echo "ERROR: Unknown mode '$MODE'"
++        echo ""
++        echo "Usage: $0 [quick|full|performance|regression|core]"
++        echo ""
++        echo "Modes:"
++        echo "  quick       - Core + Regression tests (~10-20 min)"
++        echo "  full        - All tests including performance (~30-50 min)"
++        echo "  performance - Performance benchmarks only (~15-30 min)"
++        echo "  regression  - Regression tests only (~5-10 min)"
++        echo "  core        - Core functionality tests only (~5-10 min)"
++        exit 1
++        ;;
++esac
++
++echo ""
++echo "================================================================"
++echo "Test run complete!"
++echo "================================================================"

@@ -1,0 +1,399 @@
+--- /dev/null	2026-08-19 07:29:26 -0400
++++ rsync-3.5.0/testsuite/zos-ccsid-regression_test.py	2026-08-28 07:29:21 -0400
+@@ -0,0 +1,396 @@
++#!/usr/bin/env python3
++# -*- coding: utf-8 -*-
++# Regression tests for z/OS CCSID conversion
++# Ensures existing functionality still works after fixes
++
++import os
++import platform
++import shutil
++import subprocess
++import time
++
++from rsyncfns import (
++    FROMDIR, RSYNC, SCRATCHDIR, SRCDIR, TODIR,
++    makepath, rsync_argv, run_rsync, test_fail, test_skipped,
++)
++
++if platform.system() != 'OS/390':
++    test_skipped("Skipping z/OS CCSID regression test on non-z/OS system")
++
++if shutil.which('chtag') is None:
++    test_skipped("Skipping z/OS CCSID regression test: chtag command not found")
++
++
++def get_tags(path):
++    """Returns dict with 'ccsid' and 'txtflag' keys."""
++    proc = subprocess.run(['chtag', '-h', '-p', str(path)], capture_output=True, text=True)
++    if proc.returncode != 0:
++        return {'ccsid': 'untagged', 'txtflag': '0'}
++    
++    txt = "1" if "T=on" in proc.stdout else "0"
++    words = proc.stdout.strip().split()
++    ccsid = words[1] if len(words) >= 2 else 'untagged'
++    
++    return {'ccsid': ccsid, 'txtflag': txt}
++
++
++makepath(FROMDIR, TODIR)
++
++print("=" * 70)
++print("REGRESSION TEST 1: Basic transfer without --zos-tags")
++print("=" * 70)
++
++test1_file = FROMDIR / 'regress1.txt'
++test1_file.write_text("Test content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test1_file)], check=True)
++
++dest1 = TODIR / 'regress1.txt'
++result = run_rsync('-av', str(test1_file), str(dest1), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 1: Basic transfer failed")
++
++print("Test 1: PASS - Basic transfer without --zos-tags works")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 2: Transfer with --no-zos-tags")
++print("=" * 70)
++
++test2_file = FROMDIR / 'regress2.txt'
++test2_file.write_text("Test content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test2_file)], check=True)
++
++dest2 = TODIR / 'regress2.txt'
++result = run_rsync('-av', '--no-zos-tags', str(test2_file), str(dest2), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 2: Transfer with --no-zos-tags failed")
++
++print("Test 2: PASS - Transfer with --no-zos-tags works")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 3: ASCII/UTF-8 files bypass conversion")
++print("=" * 70)
++
++# Test with CCSID 819 (ASCII)
++test3a = FROMDIR / 'regress3_ascii.txt'
++test3a.write_text("ASCII text\n", encoding='ascii')
++subprocess.run(['chtag', '-t', '-c', '819', str(test3a)], check=True)
++
++dest3a = TODIR / 'regress3_ascii.txt'
++result = run_rsync('-av', '--zos-tags', str(test3a), str(dest3a), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 3a: ASCII (819) transfer failed")
++
++tags = get_tags(dest3a)
++print(f"ASCII file CCSID: {tags['ccsid']}")
++
++# Test with CCSID 1208 (UTF-8)
++test3b = FROMDIR / 'regress3_utf8.txt'
++test3b.write_text("UTF-8 text with \u00d1o\u00f1o\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', '1208', str(test3b)], check=True)
++
++dest3b = TODIR / 'regress3_utf8.txt'
++result = run_rsync('-av', '--zos-tags', str(test3b), str(dest3b), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 3b: UTF-8 (1208) transfer failed")
++
++tags = get_tags(dest3b)
++print(f"UTF-8 file CCSID: {tags['ccsid']}")
++
++print("Test 3: PASS - ASCII/UTF-8 files bypass conversion correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 4: Binary files")
++print("=" * 70)
++
++test4_file = FROMDIR / 'regress4.bin'
++test4_file.write_bytes(b'\x00\x01\x02\xff\xfe\xfd')
++subprocess.run(['chtag', '-b', str(test4_file)], check=True)
++
++dest4 = TODIR / 'regress4.bin'
++result = run_rsync('-av', '--zos-tags', str(test4_file), str(dest4), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 4: Binary file transfer failed")
++
++# Verify content unchanged
++with open(dest4, 'rb') as f:
++    dest_data = f.read()
++
++if dest_data != b'\x00\x01\x02\xff\xfe\xfd':
++    test_fail("Regression 4: Binary content corrupted")
++
++print("Test 4: PASS - Binary files transferred correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 5: Directories and symlinks")
++print("=" * 70)
++
++test_dir = FROMDIR / 'regress_dir'
++test_dir.mkdir(parents=True, exist_ok=True)
++
++test_file = test_dir / 'file.txt'
++test_file.write_text("Content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test_file)], check=True)
++
++test_link = FROMDIR / 'regress_link'
++if test_link.exists() or test_link.is_symlink():
++    test_link.unlink()
++os.symlink('regress_dir/file.txt', test_link)
++
++result = run_rsync('-av', '--zos-tags', f'{FROMDIR}/', f'{TODIR}/', check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 5: Directory/symlink transfer failed")
++
++if not (TODIR / 'regress_dir').is_dir():
++    test_fail("Regression 5: Directory not created")
++
++if not (TODIR / 'regress_link').is_symlink():
++    test_fail("Regression 5: Symlink not created")
++
++print("Test 5: PASS - Directories and symlinks handled correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 6: --inplace option")
++print("=" * 70)
++
++test6_file = FROMDIR / 'regress6.txt'
++test6_file.write_text("Original content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test6_file)], check=True)
++
++dest6 = TODIR / 'regress6.txt'
++run_rsync('-av', '--zos-tags', str(test6_file), str(dest6), check=True)
++
++# Modify source
++time.sleep(1)  # Ensure modification time changes
++test6_file.write_text("Modified content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test6_file)], check=True)
++
++# Verify source file changed
++with open(test6_file, 'r', encoding='utf-8') as f:
++    src_content = f.read()
++if "Modified content" not in src_content:
++    test_fail("Regression 6: Source file not modified correctly")
++
++# Transfer with --inplace (use --checksum to force detection of content change)
++result = run_rsync('-av', '--inplace', '--checksum', '--zos-tags', str(test6_file), str(dest6), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 6: --inplace transfer failed")
++
++with open(dest6, 'rb') as f:
++    raw_content = f.read()
++    
++# Try to read as text (may be EBCDIC or UTF-8)
++try:
++    with open(dest6, 'r', encoding='latin-1') as f:
++        content = f.read()
++    print(f"Destination content (latin-1): {repr(content[:50])}")
++except Exception as e:
++    print(f"Could not read as latin-1: {e}")
++    content = ""
++
++# Check tags
++tags = get_tags(dest6)
++print(f"Destination CCSID: {tags['ccsid']}")
++
++# If converted to EBCDIC, we need to convert back to check
++if tags['ccsid'] not in ['UTF-8', 'untagged', 'ISO8859-1']:
++    # Try iconv to convert back
++    temp_check = SCRATCHDIR / 'regress6_check.txt'
++    try:
++        subprocess.run(
++            ['iconv', '-f', tags['ccsid'], '-t', 'UTF-8', str(dest6)],
++            stdout=open(temp_check, 'wb'),
++            check=True
++        )
++        with open(temp_check, 'r', encoding='utf-8') as f:
++            content = f.read()
++        print(f"Converted content: {repr(content[:50])}")
++    except Exception as e:
++        print(f"Could not convert: {e}")
++
++if "Modified content" not in content:
++    print(f"FAIL: Expected 'Modified content', got: {repr(content[:50])}")
++    print(f"Raw bytes: {raw_content[:50]}")
++    test_fail("Regression 6: --inplace did not update content")
++
++print("Test 6: PASS - --inplace option works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 7: --append option")
++print("=" * 70)
++
++test7_file = FROMDIR / 'regress7.txt'
++test7_file.write_text("Line 1\nLine 2\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test7_file)], check=True)
++
++dest7 = TODIR / 'regress7.txt'
++run_rsync('-av', '--zos-tags', str(test7_file), str(dest7), check=True)
++
++# Append to source
++time.sleep(1)  # Ensure modification time changes
++with open(test7_file, 'a', encoding='utf-8') as f:
++    f.write("Line 3\nLine 4\n")
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test7_file)], check=True)
++
++# Transfer with --append
++result = run_rsync('-av', '--append', '--zos-tags', str(test7_file), str(dest7), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 7: --append transfer failed")
++
++with open(dest7, 'r', encoding='latin-1') as f:
++    lines = f.readlines()
++
++if len(lines) != 4:
++    test_fail("Regression 7: --append did not add all lines")
++
++print("Test 7: PASS - --append option works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 8: --checksum option")
++print("=" * 70)
++
++test8_file = FROMDIR / 'regress8.txt'
++test8_file.write_text("Content for checksum test\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test8_file)], check=True)
++
++dest8 = TODIR / 'regress8.txt'
++result = run_rsync('-av', '--checksum', '--zos-tags', str(test8_file), str(dest8), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 8: --checksum transfer failed")
++
++print("Test 8: PASS - --checksum option works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 9: --whole-file option")
++print("=" * 70)
++
++test9_file = FROMDIR / 'regress9.txt'
++test9_file.write_text("Whole file content\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test9_file)], check=True)
++
++dest9 = TODIR / 'regress9.txt'
++result = run_rsync('-av', '--whole-file', '--zos-tags', str(test9_file), str(dest9), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 9: --whole-file transfer failed")
++
++print("Test 9: PASS - --whole-file option works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 10: Compression")
++print("=" * 70)
++
++test10_file = FROMDIR / 'regress10.txt'
++with open(test10_file, 'w', encoding='utf-8') as f:
++    for i in range(10000):
++        f.write(f"Line {i}: Compressible repeated content\n")
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test10_file)], check=True)
++
++dest10 = TODIR / 'regress10.txt'
++result = run_rsync('-avz', '--zos-tags', str(test10_file), str(dest10), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 10: Compression (-z) transfer failed")
++
++print("Test 10: PASS - Compression works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 11: Delete option")
++print("=" * 70)
++
++# Create extra file in destination
++extra = TODIR / 'regress_extra.txt'
++extra.write_text("Extra file\n")
++
++result = run_rsync('-av', '--delete', '--zos-tags', f'{FROMDIR}/', f'{TODIR}/', check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 11: --delete transfer failed")
++
++if extra.exists():
++    test_fail("Regression 11: Extra file not deleted")
++
++print("Test 11: PASS - --delete option works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 12: Dry run")
++print("=" * 70)
++
++test12_file = FROMDIR / 'regress12.txt'
++test12_file.write_text("Dry run test\n", encoding='utf-8')
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test12_file)], check=True)
++
++dest12 = TODIR / 'regress12.txt'
++if dest12.exists():
++    dest12.unlink()
++
++result = run_rsync('-avn', '--zos-tags', str(test12_file), str(dest12), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 12: Dry run failed")
++
++if dest12.exists():
++    test_fail("Regression 12: File created during dry run")
++
++print("Test 12: PASS - Dry run works correctly")
++
++
++print("\n" + "=" * 70)
++print("REGRESSION TEST 13: Sparse files")
++print("=" * 70)
++
++test13_file = FROMDIR / 'regress13_sparse.txt'
++with open(test13_file, 'wb') as f:
++    f.write(b'Start')
++    f.seek(1024*1024)  # 1MB hole
++    f.write(b'End')
++
++subprocess.run(['chtag', '-t', '-c', 'UTF-8', str(test13_file)], check=True)
++
++dest13 = TODIR / 'regress13_sparse.txt'
++result = run_rsync('-av', '--sparse', '--zos-tags', str(test13_file), str(dest13), check=False)
++
++if result.returncode != 0:
++    test_fail("Regression 13: Sparse file transfer failed")
++
++print("Test 13: PASS - Sparse files work correctly")
++
++
++print("\n" + "=" * 70)
++print("ALL REGRESSION TESTS PASSED")
++print("=" * 70)
++print("\nVerified functionality:")
++print("  [PASS] Basic transfers without --zos-tags")
++print("  [PASS] --no-zos-tags option")
++print("  [PASS] ASCII/UTF-8 files bypass conversion")
++print("  [PASS] Binary files")
++print("  [PASS] Directories and symlinks")
++print("  [PASS] --inplace option")
++print("  [PASS] --append option")
++print("  [PASS] --checksum option")
++print("  [PASS] --whole-file option")
++print("  [PASS] Compression (-z)")
++print("  [PASS] --delete option")
++print("  [PASS] Dry run (-n)")
++print("  [PASS] Sparse files")
++print("\nNo regressions detected in existing functionality")

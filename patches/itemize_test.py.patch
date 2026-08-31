@@ -1,0 +1,37 @@
+diff --git a/testsuite/itemize_test.py b/testsuite/itemize_test.py
+index b6a4e89..9e3f5ff 100644
+--- a/testsuite/itemize_test.py
++++ b/testsuite/itemize_test.py
+@@ -6,6 +6,7 @@
+ # representations across whole-file and delta paths.
+ 
+ import os
++import platform
+ import shutil
+ 
+ from rsyncfns import (
+@@ -14,6 +15,10 @@ from rsyncfns import (
+     checkdiff, cp_p, makepath, run_rsync, v_filt, hardlink_symlinks_supported,
+ )
+ 
++if platform.system() == 'OS/390':
++    import rsyncfns
++    rsyncfns.RSYNC += ' --no-zos-tags'
++
+ 
+ to2dir = TMPDIR / 'to2'
+ 
+@@ -52,8 +57,11 @@ symtimes_supported = '"symtimes": true' in vv
+ # link happens on whichever filesystem holds the test data: macOS builds on APFS
+ # (yes) and can write to HFS+ (ENOTSUP).  rsync falls back to a copy when the
+ # filesystem refuses, so the letter follows the filesystem.
+-L = ('hL' if hardlink_symlinks and hardlink_symlinks_supported(SCRATCHDIR)
+-     else 'cL')
++if platform.system() == 'OS/390':
++    L = 'hL' if hardlink_symlinks else 'cL'
++else:
++    L = ('hL' if hardlink_symlinks and hardlink_symlinks_supported(SCRATCHDIR)
++         else 'cL')
+ 
+ if 'protocol=2' in RSYNC:
+     T = '.T'

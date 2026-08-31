@@ -1,0 +1,23 @@
+diff --git a/testsuite/daemon-scan-dir-escape_test.py b/testsuite/daemon-scan-dir-escape_test.py
+index dccd17e..c9025d6 100644
+--- a/testsuite/daemon-scan-dir-escape_test.py
++++ b/testsuite/daemon-scan-dir-escape_test.py
+@@ -20,12 +20,17 @@
+ # module escapes).
+ 
+ import os
++import platform
+ 
+ from rsyncfns import (
+     SCRATCHDIR, get_rootgid, get_rootuid, get_testuid, makepath, rmtree,
+-    run_rsync, start_test_daemon, test_fail,
++    run_rsync, start_test_daemon, test_fail, test_skipped,
+ )
+ 
++if platform.system() == 'OS/390':
++    # z/OS USS lacks directory descriptor and openat support for daemon scan dir confinement
++    test_skipped("daemon scan dir confinement relies on openat/dirfd kernel support not available on OS/390")
++
+ DAEMON_PORT = 12947
+ MARKER = "XFIL-OUTSIDE-MODULE-SYMLINK-TARGET"
+ 

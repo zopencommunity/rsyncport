@@ -1,8 +1,8 @@
 diff --git a/flist.c b/flist.c
-index 346540f..91e106c 100644
+index 9276c65..ae7af6a 100644
 --- a/flist.c
 +++ b/flist.c
-@@ -48,6 +48,10 @@ extern int preserve_uid;
+@@ -53,6 +53,10 @@ extern int preserve_uid;
  extern int preserve_gid;
  extern int preserve_acls;
  extern int preserve_xattrs;
@@ -13,7 +13,7 @@ index 346540f..91e106c 100644
  extern int preserve_links;
  extern int preserve_hard_links;
  extern int preserve_devices;
-@@ -57,6 +61,9 @@ extern int missing_args;
+@@ -62,6 +66,9 @@ extern int missing_args;
  extern int eol_nulls;
  extern int atimes_ndx;
  extern int crtimes_ndx;
@@ -23,33 +23,68 @@ index 346540f..91e106c 100644
  extern int relative_paths;
  extern int implied_dirs;
  extern int ignore_perishable;
-@@ -512,6 +519,11 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
+@@ -232,6 +239,7 @@ static int scan_dir_prefix_len;
+ 
+ static int scan_link_stat(const char *path, STRUCT_STAT *stp, int follow_dirlinks)
+ {
++#ifdef AT_FDCWD
+ 	/* Use the held scan fd only for a single component directly inside the
+ 	 * scanned dir, and only when am_root >= 0 (link_stat_at folds in no
+ 	 * fake-super %stat xattr; link_stat does so via get_stat_xattr, a no-op
+@@ -241,16 +249,19 @@ static int scan_link_stat(const char *path, STRUCT_STAT *stp, int follow_dirlink
+ 	 && path[scan_dir_prefix_len] == '/'
+ 	 && strchr(path + scan_dir_prefix_len + 1, '/') == NULL)
+ 		return link_stat_at(scan_dirfd, path + scan_dir_prefix_len + 1, stp, follow_dirlinks);
++#endif
+ 	return link_stat(path, stp, follow_dirlinks);
+ }
+ 
+ static int scan_readlink(const char *path, char *linkbuf, size_t bufsiz)
+ {
++#ifdef AT_FDCWD
+ 	if (scan_dirfd >= 0 && am_root >= 0
+ 	 && strncmp(path, scan_dir_prefix, scan_dir_prefix_len) == 0
+ 	 && path[scan_dir_prefix_len] == '/'
+ 	 && strchr(path + scan_dir_prefix_len + 1, '/') == NULL)
+ 		return do_readlink_atfd(scan_dirfd, path + scan_dir_prefix_len + 1, linkbuf, bufsiz);
++#endif
+ 	return do_readlink(path, linkbuf, bufsiz);
+ }
+ 
+@@ -595,6 +606,11 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
  	}
  #endif
  
 +#ifdef __MVS__
-+	if (preserve_zos_tags && S_ISREG(mode))
++	if (preserve_zos_tags && S_ISREG(mode) && protocol_version >= 30)
 +		xflags |= XMIT_ZOS_TAGS;
 +#endif
 +
  #ifdef SUPPORT_HARD_LINKS
  	if (tmp_dev != -1) {
  		if (protocol_version >= 30) {
-@@ -671,6 +683,13 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
- 	}
- #endif
- 
+@@ -689,6 +705,12 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
+ 		write_int(f, to_wire_mode(mode));
+ 	if (atimes_ndx && !S_ISDIR(mode) && !(xflags & XMIT_SAME_ATIME))
+ 		write_varlong(f, atime, 4);
 +#ifdef __MVS__
 +	if (xflags & XMIT_ZOS_TAGS) {
 +		write_varint(f, F_ZOS_CCSID(file));
 +		write_varint(f, F_ZOS_TXTFLAG(file));
 +	}
 +#endif
+ 	if (preserve_uid && !(xflags & XMIT_SAME_UID)) {
+ 		if (protocol_version < 30)
+ 			write_int(f, uid);
+@@ -754,6 +776,7 @@ static void send_file_entry(int f, const char *fname, struct file_struct *file,
+ 	}
+ #endif
+ 
 +
  	if (always_checksum && (S_ISREG(mode) || protocol_version < 28)) {
  		const char *sum;
  		if (S_ISREG(mode))
-@@ -706,6 +725,10 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+@@ -789,6 +812,10 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
  	static uid_t uid;
  	static gid_t gid;
  	static uint16 gid_flags;
@@ -60,9 +95,9 @@ index 346540f..91e106c 100644
  	static char lastname[MAXPATHLEN], *lastdir;
  	static int lastdir_depth, lastdir_len = -1;
  	static unsigned int del_hier_name_len = 0;
-@@ -974,6 +997,21 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+@@ -993,6 +1020,21 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
  #endif
- 		linkname_len = 0;
+ 	}
  
 +#ifdef __MVS__
 +	/* Read z/OS tags if present */
@@ -74,15 +109,15 @@ index 346540f..91e106c 100644
 +	} else if (preserve_zos_tags && zos_tags_ndx && S_ISREG(mode)) {
 +		/* Linux -> z/OS: default to ISO8859-1 */
 +		zos_ccsid = zos_default_ccsid;
-+		zos_txtflag = 1;
++		zos_txtflag = (zos_ccsid != 0 && zos_ccsid != 0xFFFF) ? 1 : 0;
 +		extra_len += 2 * EXTRA_LEN;
 +	}
 +#endif
 +
- 	if (copy_devices && IS_DEVICE(mode)) {
- 		/* This is impossible in the official release, but some pre-release patches
- 		 * didn't convert the device into a file before sending, so we'll do it here
-@@ -1099,6 +1137,12 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
+ 	if (chmod_modes && !S_ISLNK(mode) && mode)
+ 		mode = tweak_mode(mode, chmod_modes);
+ 
+@@ -1217,6 +1259,12 @@ static struct file_struct *recv_file_entry(int f, struct file_list *flist, int x
  #endif
  	if (unsort_ndx)
  		F_NDX(file) = flist->used + flist->ndx_start;
@@ -95,7 +130,7 @@ index 346540f..91e106c 100644
  
  	if (basename != thisname) {
  		file->dirname = lastdir;
-@@ -1518,6 +1562,28 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
+@@ -1679,6 +1727,22 @@ struct file_struct *make_file(const char *fname, struct file_list *flist,
  	if (crtimes_ndx)
  		F_CRTIME(file) = get_create_time(fname, &st);
  #endif
@@ -104,12 +139,6 @@ index 346540f..91e106c 100644
 +		F_ZOS_CCSID(file) = st.st_tag.ft_ccsid;
 +		F_ZOS_TXTFLAG(file) = st.st_tag.ft_txtflag;
 +
-+		/* Apply default CCSID if file is untagged and default is set */
-+		if (!am_sender && F_ZOS_CCSID(file) == 0 && zos_default_ccsid != 0) {
-+			F_ZOS_CCSID(file) = zos_default_ccsid;
-+			F_ZOS_TXTFLAG(file) = 1; /* Mark as text */
-+		}
-+		
 +		if (DEBUG_GTE(FLIST, 2)) {
 +			rprintf(FINFO, "[DEBUG] make_file: %s (ccsid=%u, txt=%u, ndx=%d)\n",
 +				fname, F_ZOS_CCSID(file), F_ZOS_TXTFLAG(file), zos_tags_ndx);
@@ -124,3 +153,12 @@ index 346540f..91e106c 100644
  
  	if (basename != thisname)
  		file->dirname = lastdir;
+@@ -2149,7 +2213,7 @@ static void send_directory(int f, struct file_list *flist, char *fbuf, int len,
+ 	} else
+ 		remainder = 0;
+ 
+-#ifdef HAVE_DIRFD
++#if defined HAVE_DIRFD && defined AT_FDCWD
+ 	/* Let the per-entry stat (readlink_stat -> scan_link_stat) go through the
+ 	 * already-open directory fd instead of re-resolving fbuf for each name. */
+ 	scan_dirfd = dirfd(d);
