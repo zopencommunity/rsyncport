@@ -10,9 +10,9 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RSYNC_DIR="${1:-../rsync-3.5.0}"
 
-echo "╔══════════════════════════════════════════════════════════════════════╗"
-echo "║     z/OS rsync CCSID Conversion Fixes - Patch Application           ║"
-echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo "ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
+echo "â     z/OS rsync CCSID Conversion Fixes - Patch Application           â"
+echo "ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo
 
 # Verify we're in the right place
@@ -44,9 +44,9 @@ PATCHES=(
     "CCSID_TEST_SUITE.md.patch"
 )
 
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Applying patches..."
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo
 
 APPLIED=0
@@ -56,7 +56,7 @@ for patch in "${PATCHES[@]}"; do
     patch_file="$SCRIPT_DIR/$patch"
     
     if [ ! -f "$patch_file" ]; then
-        echo "✗ ERROR: Patch file not found: $patch"
+        echo "â ERROR: Patch file not found: $patch"
         FAILED=$((FAILED + 1))
         continue
     fi
@@ -64,10 +64,10 @@ for patch in "${PATCHES[@]}"; do
     printf "Applying %-50s ... " "$patch"
     
     if patch -p1 < "$patch_file" > /tmp/patch.$$.log 2>&1; then
-        echo "✓"
+        echo "â"
         APPLIED=$((APPLIED + 1))
     else
-        echo "✗ FAILED"
+        echo "â FAILED"
         echo "  Error details:"
         cat /tmp/patch.$$.log | sed 's/^/    /'
         FAILED=$((FAILED + 1))
@@ -87,39 +87,39 @@ done
 rm -f /tmp/patch.$$.log
 
 echo
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Patch Application Summary"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 echo "  Applied: $APPLIED"
 echo "  Failed:  $FAILED"
 echo "  Total:   ${#PATCHES[@]}"
-echo "═══════════════════════════════════════════════════════════════════"
+echo "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ"
 
 if [ $FAILED -eq 0 ]; then
     echo
-    echo "✓ All patches applied successfully!"
+    echo "â All patches applied successfully!"
     echo
     
     # Set executable permissions on test runner
     if [ -f "testsuite/run-ccsid-tests.sh" ]; then
         chmod +x testsuite/run-ccsid-tests.sh
-        echo "✓ Set executable permission on run-ccsid-tests.sh"
+        echo "â Set executable permission on run-ccsid-tests.sh"
     fi
     
     echo
     echo "Files modified:"
-    echo "  • receiver.c           - CCSID conversion fixes"
-    echo "  • hlink.c              - Hard-link tag preservation"
-    echo "  • testsuite/rsyncfns.py - Runtime capability check"
-    echo "  • testsuite/daemon-include-maxconn_test.py"
-    echo "  • testsuite/msg-io-timeout-zero_test.py"
+    echo "  â¢ receiver.c           - CCSID conversion fixes"
+    echo "  â¢ hlink.c              - Hard-link tag preservation"
+    echo "  â¢ testsuite/rsyncfns.py - Runtime capability check"
+    echo "  â¢ testsuite/daemon-include-maxconn_test.py"
+    echo "  â¢ testsuite/msg-io-timeout-zero_test.py"
     echo
     echo "Files created:"
-    echo "  • testsuite/zos-ccsid-conversion_test.py"
-    echo "  • testsuite/zos-ccsid-performance_test.py"
-    echo "  • testsuite/zos-ccsid-regression_test.py"
-    echo "  • testsuite/run-ccsid-tests.sh"
-    echo "  • testsuite/CCSID_TEST_SUITE.md"
+    echo "  â¢ testsuite/zos-ccsid-conversion_test.py"
+    echo "  â¢ testsuite/zos-ccsid-performance_test.py"
+    echo "  â¢ testsuite/zos-ccsid-regression_test.py"
+    echo "  â¢ testsuite/run-ccsid-tests.sh"
+    echo "  â¢ testsuite/CCSID_TEST_SUITE.md"
     echo
     echo "Next steps:"
     echo "  1. Build rsync:    make clean && ./configure && make"
@@ -129,7 +129,7 @@ if [ $FAILED -eq 0 ]; then
     exit 0
 else
     echo
-    echo "✗ Some patches failed to apply"
+    echo "â Some patches failed to apply"
     echo
     echo "Check for .rej files:"
     echo "  find . -name '*.rej'"
