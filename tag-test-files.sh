@@ -15,4 +15,4 @@ echo "Verifying tags:"
 ls -T zos-ccsid-*.py
 
 echo
-echo "✓ Done! Test files are now tagged as UTF-8"
+echo "* Done! Test files are now tagged as UTF-8"
